@@ -1,7 +1,6 @@
-export type ApiStatus = 'ONLINE' | 'OFFLINE' | 'DRAFT';
-export type CheckResult = 'SUCCESS' | 'FAIL' | 'BYPASS';
-export type VersionStatus = 'CURRENT' | 'ROLLED_BACK' | 'ARCHIVED';
-export type GrantMode = 'api' | 'group';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type DecisionResult = 'SUCCESS' | 'FAIL' | 'BYPASS';
+export type ChangeType = '新增API' | '修改API' | '删除API';
 
 export interface UserInfo {
   username: string;
@@ -9,13 +8,13 @@ export interface UserInfo {
 }
 
 export interface OverviewStats {
-  apiCount: number;
-  appCount: number;
-  appGroupCount: number;
-  apiGroupCount: number;
-  grantCount: number;
-  todayCalls: number;
-  todayAuthFail: number;
+  api_total: number;
+  app_total: number;
+  api_group_total: number;
+  app_group_total: number;
+  auth_relation_total: number;
+  smartdoc_import_total: number;
+  today_call_total: number;
 }
 
 export interface ActivityRecord {
@@ -23,142 +22,181 @@ export interface ActivityRecord {
   title: string;
   description: string;
   time: string;
-  type: 'IMPORT' | 'AUTH' | 'LOG';
-}
-
-export interface ApiItem {
-  id: string;
-  appId: string;
-  appName: string;
-  groupIds: string[];
-  groupNames: string[];
-  name: string;
-  description: string;
-  path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  version: string;
-  status: ApiStatus;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface AppItem {
   id: string;
-  name: string;
-  owner: string;
+  app_code: string;
+  app_name: string;
+  app_description: string;
+  current_version: string;
+  create_time: string;
+  update_time: string;
+  is_deleted: 0 | 1;
 }
 
-export interface AppGroupItem {
+export interface ApiItem {
   id: string;
-  name: string;
-  description: string;
-  appIds: string[];
-  appNames: string[];
-  updatedAt: string;
+  app_code: string;
+  app_name: string;
+  api_name: string;
+  api_path: string;
+  api_method: HttpMethod;
+  api_version_id: string;
+  api_description: string;
+  api_group_ids: string[];
+  api_group_names: string[];
+  create_time: string;
+  update_time: string;
+  is_deleted: 0 | 1;
 }
 
 export interface ApiGroupItem {
   id: string;
-  appId: string;
-  appName: string;
-  name: string;
-  description: string;
-  apiIds: string[];
-  apiNames: string[];
-  updatedAt: string;
+  api_group_name: string;
+  api_group_description: string;
+  app_code: string;
+  app_name: string;
+  api_ids: string[];
+  api_paths: string[];
+  create_time: string;
+  update_time: string;
+  is_deleted: 0 | 1;
 }
 
-export interface ApiChangeRecord {
+export interface AppGroupItem {
   id: string;
-  operator: string;
-  action: string;
-  content: string;
-  time: string;
+  app_group_name: string;
+  app_group_description: string;
+  app_codes: string[];
+  app_names: string[];
+  create_time: string;
+  update_time: string;
+  is_deleted: 0 | 1;
 }
 
-export interface AuthorizationRecord {
+export interface VersionDiffItem {
   id: string;
-  callerType: 'APP' | 'APP_GROUP';
-  callerName: string;
-  calleeAppId: string;
-  calleeAppName: string;
-  resourceType: 'API' | 'API_GROUP';
-  resourceId: string;
-  resourceName: string;
-  path: string;
-  version: string;
-  operationType: 'GRANT' | 'REVOKE';
-  operator: string;
-  time: string;
+  app_code: string;
+  app_name: string;
+  api_name: string;
+  api_path: string;
+  api_method: HttpMethod;
+  api_description: string;
 }
 
-export interface VersionItem {
+export interface ModifiedApiDiff {
   id: string;
-  version: string;
-  importedAt: string;
-  summary: string;
-  changeCount: number;
-  status: VersionStatus;
-  scope: string;
+  before: VersionDiffItem;
+  after: VersionDiffItem;
+  changed_fields: Array<'api_name' | 'api_method' | 'api_description'>;
 }
 
-export interface RollbackRecord {
-  id: string;
-  version: string;
-  operator: string;
-  time: string;
-  reason: string;
-}
-
-export interface SmartDocDiffApi {
-  id: string;
-  appName: string;
-  name: string;
-  path: string;
-  method: string;
-  description?: string;
-}
-
-export interface SmartDocModifiedApi {
-  id: string;
-  before: SmartDocDiffApi;
-  after: SmartDocDiffApi;
-  fields: string[];
+export interface SmartDocImportDraft {
+  app_code: string;
+  api_version_id: string;
+  remark: string;
+  file_name: string;
+  file_path: string;
 }
 
 export interface SmartDocDiffResult {
-  version: VersionItem;
-  additions: SmartDocDiffApi[];
-  modifications: SmartDocModifiedApi[];
-  deletions: SmartDocDiffApi[];
+  draft: SmartDocImportDraft;
+  additions: VersionDiffItem[];
+  modifications: ModifiedApiDiff[];
+  deletions: VersionDiffItem[];
+}
+
+export interface VersionHistoryItem {
+  id: string;
+  app_code: string;
+  app_name: string;
+  api_version_id: string;
+  file_name: string;
+  file_path: string;
+  remark: string;
+  create_time: string;
 }
 
 export interface VersionDetail {
-  base: VersionItem;
-  changeList: Array<{
+  version: VersionHistoryItem;
+  apis: Array<{
     id: string;
-    type: '新增' | '修改' | '删除';
-    target: string;
-    detail: string;
+    api_name: string;
+    api_path: string;
+    api_method: HttpMethod;
   }>;
-  rollbackRecords: RollbackRecord[];
+  rollback_preview: {
+    additions: VersionDiffItem[];
+    modifications: ModifiedApiDiff[];
+    deletions: VersionDiffItem[];
+  };
 }
 
-export interface RemoteLogItem {
+export interface SingleAppAuthorization {
   id: string;
-  callerApp: string;
-  calleeApp: string;
-  checkResult: CheckResult;
-  reason: string;
-  responseCode: number;
-  path: string;
-  time: string;
+  caller_app_code: string;
+  caller_app_name: string;
+  callee_app_code: string;
+  callee_app_name: string;
+  api_paths: string[];
+  api_group_ids: string[];
 }
 
-export interface AuthorizationPanelData {
-  callers: Array<{ id: string; name: string; type: 'APP' | 'APP_GROUP' }>;
-  callees: AppItem[];
-  apiTree: Array<{ id: string; label: string; children?: Array<{ id: string; label: string }> }>;
-  groupTree: Array<{ id: string; label: string; children?: Array<{ id: string; label: string }> }>;
-  selectedGrants: AuthorizationRecord[];
+export interface AppGroupAuthorization {
+  id: string;
+  app_group_name: string;
+  app_codes: string[];
+  app_names: string[];
+}
+
+export interface AuthorizationEditorData {
+  apis: Array<{
+    id: string;
+    api_name: string;
+    api_path: string;
+    app_code: string;
+  }>;
+  api_groups: Array<{
+    id: string;
+    api_group_name: string;
+    app_code: string;
+    api_ids: string[];
+  }>;
+  checked_api_ids: string[];
+  checked_group_ids: string[];
+}
+
+export interface AuthorizationDelta {
+  added_api_paths: string[];
+  revoked_api_paths: string[];
+}
+
+export interface AuthConfigLogItem {
+  auth_log_id: string;
+  caller_app_code: string;
+  callee_app_code: string;
+  api_name: string;
+  api_path: string;
+  operation_type: '新增' | '撤销';
+  log_time: string;
+}
+
+export interface SmartDocImportLogItem {
+  id: string;
+  app_code: string;
+  api_version_id: string;
+  file_name: string;
+  file_path: string;
+  remark: string;
+  create_time: string;
+}
+
+export interface RemoteCallLogItem {
+  call_decision_log_id: string;
+  caller_app_code: string;
+  callee_app_code: string;
+  result: DecisionResult;
+  decision_reason: string;
+  log_time: string;
 }

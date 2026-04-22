@@ -1,0 +1,46 @@
+<template>
+  <div class="page-container">
+    <div class="page-title">
+      <h2>SmartDoc导入历史记录</h2>
+      <p>查看应用编码、版本号、导入文件名、存储路径和备注信息。</p>
+    </div>
+    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+      <el-form-item label="应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
+      <el-form-item label="版本号"><el-input v-model="query.api_version_id" clearable /></el-form-item>
+      <el-form-item label="导入时间">
+        <el-date-picker v-model="query.time_range" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" />
+      </el-form-item>
+    </PageSearch>
+    <el-card class="panel-card" shadow="never">
+      <el-table :data="list" border>
+        <el-table-column prop="app_code" label="应用编码" width="160" />
+        <el-table-column prop="api_version_id" label="版本号" width="140" />
+        <el-table-column prop="file_name" label="导入的 Smart Doc 文件名" min-width="260" />
+        <el-table-column prop="file_path" label="Linux 文件系统中的存储路径" min-width="320" />
+        <el-table-column prop="remark" label="导入说明或备注" min-width="220" />
+        <el-table-column prop="create_time" label="导入时间" width="180" />
+      </el-table>
+    </el-card>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, reactive, ref } from 'vue';
+import PageSearch from '@/components/PageSearch.vue';
+import { fetchSmartDocImportLogs } from '@/mock/history';
+
+const query = reactive({ app_code: '', api_version_id: '', time_range: [] as string[] });
+const list = ref<any[]>([]);
+
+async function loadData() {
+  const { data } = await fetchSmartDocImportLogs(query);
+  list.value = data;
+}
+
+function resetQuery() {
+  Object.assign(query, { app_code: '', api_version_id: '', time_range: [] });
+  loadData();
+}
+
+onMounted(loadData);
+</script>

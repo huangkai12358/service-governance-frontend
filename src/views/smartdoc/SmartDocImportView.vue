@@ -1,125 +1,131 @@
 <template>
   <div class="page-container">
     <div class="page-title">
-      <h2>SmartDoc导入API</h2>
-      <p>通过上传文档模拟导入分析，输出版本差异并确认导入内容。</p>
+      <h2>SmartDoc导入</h2>
+      <p>上传文档后进行解析，并按 path 对比新增 API、修改 API、删除 API。</p>
     </div>
     <el-card class="panel-card" shadow="never">
       <el-steps :active="step" finish-status="success">
-        <el-step title="上传文件" />
-        <el-step title="解析文档" />
-        <el-step title="匹配已有API" />
-        <el-step title="生成差异结果" />
+        <el-step title="上传" />
+        <el-step title="解析" />
+        <el-step title="差异对比" />
         <el-step title="确认导入" />
       </el-steps>
-      <div class="upload-area">
-        <el-upload drag :auto-upload="false" action="#" :limit="1" :show-file-list="true">
-          <el-icon size="30"><UploadFilled /></el-icon>
-          <div class="el-upload__text">将 SmartDoc 文件拖到此处，或 <em>点击上传</em></div>
-          <template #tip>
-            <div class="el-upload__tip">仅做前端 Mock，不执行真实文档解析</div>
-          </template>
+      <div class="upload-wrap">
+        <el-upload drag action="#" :auto-upload="false" :limit="1">
+          <el-icon size="28"><UploadFilled /></el-icon>
+          <div class="el-upload__text">拖拽 SmartDoc 文件到此处，或点击上传</div>
         </el-upload>
-        <el-button type="primary" @click="startAnalyze">开始分析</el-button>
+        <el-button type="primary" @click="analyze">上传</el-button>
       </div>
-    </el-card>
-
-    <el-card v-if="loading" class="panel-card" shadow="never">
-      <el-skeleton :rows="5" animated />
     </el-card>
 
     <el-card v-if="diff" class="panel-card" shadow="never">
-      <div class="page-header">
-        <div>
-          <h3 class="section-title">差异结果</h3>
-          <p>待导入版本：{{ diff.version.version }}，共识别 {{ totalDiffs }} 项变更。</p>
-        </div>
-        <el-button type="success" @click="confirmImport">确认导入</el-button>
-      </div>
-      <el-tabs v-model="activeTab">
+      <el-form :model="draft" label-width="100px" style="margin-bottom:20px">
+        <el-form-item label="app_code">
+          <el-input v-model="draft.app_code" placeholder="优先从 SmartDoc 文档解析" />
+        </el-form-item>
+        <el-form-item label="版本号">
+          <el-input v-model="draft.api_version_id" placeholder="优先从 SmartDoc 文档解析" />
+        </el-form-item>
+        <el-form-item label="说明">
+          <el-input v-model="draft.remark" type="textarea" />
+        </el-form-item>
+      </el-form>
+      <el-tabs v-model="tab">
         <el-tab-pane :label="`新增API（${diff.additions.length}）`" name="add">
           <div class="diff-grid">
-            <DiffCard v-for="item in diff.additions" :key="item.id" type="added" :title="item.name" :subtitle="item.path" tag-text="新增API">
-              <el-checkbox v-model="selectedIds" :label="item.id">导入此变更</el-checkbox>
-              <p>{{ item.description }}</p>
+            <DiffCard v-for="item in diff.additions" :key="item.id" type="added" :title="item.api_name" :subtitle="item.api_path" tag-text="新增API">
+              <p>请求方法：{{ item.api_method }}</p>
+              <p>描述：{{ item.api_description }}</p>
             </DiffCard>
           </div>
         </el-tab-pane>
         <el-tab-pane :label="`修改API（${diff.modifications.length}）`" name="modify">
           <div class="diff-grid">
-            <DiffCard v-for="item in diff.modifications" :key="item.id" type="updated" :title="item.after.name" :subtitle="item.after.path" tag-text="修改API">
-              <el-checkbox v-model="selectedIds" :label="item.id">导入此变更</el-checkbox>
-              <el-descriptions :column="2" border style="margin-top: 12px">
-                <el-descriptions-item label="修改字段" :span="2">
-                  <el-tag v-for="field in item.fields" :key="field" style="margin-right:8px">{{ field }}</el-tag>
+            <DiffCard v-for="item in diff.modifications" :key="item.id" type="updated" :title="item.after.api_name" :subtitle="item.after.api_path" tag-text="修改API">
+              <el-descriptions :column="1" border>
+                <el-descriptions-item label="变化字段">
+                  <el-tag v-for="field in item.changed_fields" :key="field" style="margin-right:8px">{{ field }}</el-tag>
                 </el-descriptions-item>
-                <el-descriptions-item label="变更前">{{ item.before.name }} / {{ item.before.description }}</el-descriptions-item>
-                <el-descriptions-item label="变更后">{{ item.after.name }} / {{ item.after.description }}</el-descriptions-item>
+                <el-descriptions-item label="变更前">{{ item.before.api_name }} / {{ item.before.api_method }} / {{ item.before.api_description }}</el-descriptions-item>
+                <el-descriptions-item label="变更后">{{ item.after.api_name }} / {{ item.after.api_method }} / {{ item.after.api_description }}</el-descriptions-item>
               </el-descriptions>
             </DiffCard>
           </div>
         </el-tab-pane>
         <el-tab-pane :label="`删除API（${diff.deletions.length}）`" name="delete">
           <div class="diff-grid">
-            <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.name" :subtitle="item.path" tag-text="删除API">
-              <el-checkbox v-model="selectedIds" :label="item.id">导入此变更</el-checkbox>
-              <p>{{ item.description }}</p>
+            <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="删除API">
+              <p>请求方法：{{ item.api_method }}</p>
+              <p>描述：{{ item.api_description }}</p>
             </DiffCard>
           </div>
         </el-tab-pane>
       </el-tabs>
+      <div class="actions">
+        <el-button type="primary" @click="confirmImport">确认导入</el-button>
+        <el-button @click="cancelImport">取消</el-button>
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import DiffCard from '@/components/DiffCard.vue';
 import { analyzeSmartDoc, confirmSmartDocImport } from '@/mock/smartdoc';
 
 const step = ref(0);
-const loading = ref(false);
 const diff = ref<any>(null);
-const activeTab = ref('add');
-const selectedIds = ref<string[]>([]);
+const tab = ref('add');
+const draft = reactive({ app_code: '', api_version_id: '', remark: '' });
 
-const totalDiffs = computed(() => {
-  if (!diff.value) return 0;
-  return diff.value.additions.length + diff.value.modifications.length + diff.value.deletions.length;
-});
-
-async function startAnalyze() {
+async function analyze() {
   step.value = 1;
-  loading.value = true;
-  window.setTimeout(() => { step.value = 2; }, 300);
-  window.setTimeout(() => { step.value = 3; }, 600);
   const { data } = await analyzeSmartDoc();
-  loading.value = false;
   diff.value = data;
-  selectedIds.value = [...data.additions.map((i: any) => i.id), ...data.modifications.map((i: any) => i.id)];
-  step.value = 4;
+  Object.assign(draft, {
+    app_code: data.draft.app_code,
+    api_version_id: data.draft.api_version_id,
+    remark: data.draft.remark
+  });
+  step.value = 2;
 }
 
 async function confirmImport() {
-  const { message } = await confirmSmartDocImport(selectedIds.value);
-  step.value = 5;
+  const { message } = await confirmSmartDocImport();
+  step.value = 3;
   ElMessage.success(message);
+}
+
+function cancelImport() {
+  diff.value = null;
+  step.value = 0;
+  Object.assign(draft, { app_code: '', api_version_id: '', remark: '' });
 }
 </script>
 
 <style scoped>
-.upload-area {
-  margin-top: 24px;
+.upload-wrap {
+  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .diff-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
 }
 </style>

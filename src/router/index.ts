@@ -20,58 +20,70 @@ const routes = [
         meta: { title: '首页' }
       },
       {
-        path: 'api',
-        name: 'ApiManagement',
+        path: 'api/list',
+        name: 'ApiList',
         component: () => import('@/views/api/ApiListView.vue'),
-        meta: { title: 'API管理' }
+        meta: { title: 'API列表' }
       },
       {
-        path: 'smartdoc',
+        path: 'api/smartdoc',
         name: 'SmartDocImport',
         component: () => import('@/views/smartdoc/SmartDocImportView.vue'),
         meta: { title: 'SmartDoc导入' }
       },
       {
-        path: 'versions',
-        name: 'VersionManagement',
+        path: 'api/version-history',
+        name: 'ApiVersionHistory',
         component: () => import('@/views/version/VersionListView.vue'),
-        meta: { title: '版本管理' }
+        meta: { title: '历史版本管理' }
       },
       {
-        path: 'app-groups',
-        name: 'AppGroupManagement',
-        component: () => import('@/views/app-group/AppGroupView.vue'),
-        meta: { title: '应用分组' }
+        path: 'app/list',
+        name: 'AppList',
+        component: () => import('@/views/app/AppListView.vue'),
+        meta: { title: 'APP管理' }
       },
       {
-        path: 'api-groups',
-        name: 'ApiGroupManagement',
-        component: () => import('@/views/api-group/ApiGroupView.vue'),
+        path: 'groups/api',
+        name: 'ApiGroupList',
+        component: () => import('@/views/groups/ApiGroupListView.vue'),
         meta: { title: 'API分组' }
       },
       {
-        path: 'authorization',
-        name: 'AuthorizationManagement',
-        component: () => import('@/views/auth/AuthorizationView.vue'),
-        meta: { title: '授权管理' }
+        path: 'groups/app',
+        name: 'AppGroupList',
+        component: () => import('@/views/groups/AppGroupListView.vue'),
+        meta: { title: 'APP分组' }
       },
       {
-        path: 'auth-history',
-        name: 'AuthorizationHistory',
-        component: () => import('@/views/history/AuthHistoryView.vue'),
-        meta: { title: '权限配置历史' }
+        path: 'auth/app',
+        name: 'SingleAppAuth',
+        component: () => import('@/views/auth/SingleAppAuthView.vue'),
+        meta: { title: '单个应用授权' }
       },
       {
-        path: 'version-history',
-        name: 'VersionHistory',
-        component: () => import('@/views/history/VersionHistoryView.vue'),
-        meta: { title: '版本历史记录' }
+        path: 'auth/app-group',
+        name: 'AppGroupAuth',
+        component: () => import('@/views/auth/AppGroupAuthView.vue'),
+        meta: { title: '应用组授权' }
       },
       {
-        path: 'logs',
-        name: 'RemoteLogs',
-        component: () => import('@/views/logs/RemoteLogsView.vue'),
-        meta: { title: '远程调用日志' }
+        path: 'logs/auth-config',
+        name: 'AuthConfigLog',
+        component: () => import('@/views/logs/AuthConfigLogView.vue'),
+        meta: { title: '权限配置历史记录' }
+      },
+      {
+        path: 'logs/smartdoc-import',
+        name: 'SmartDocImportLog',
+        component: () => import('@/views/logs/SmartDocImportLogView.vue'),
+        meta: { title: 'SmartDoc导入历史记录' }
+      },
+      {
+        path: 'logs/remote-call',
+        name: 'RemoteCallLog',
+        component: () => import('@/views/logs/RemoteCallLogView.vue'),
+        meta: { title: '远程调用历史记录' }
       }
     ]
   }

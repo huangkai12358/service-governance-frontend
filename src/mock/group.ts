@@ -1,26 +1,33 @@
-import { apiGroups, appGroups, appList } from './base';
+import { apiGroups, apis, appGroups, apps } from './base';
 import { success, wait } from '@/utils/mock';
 
-export async function fetchAppGroups() {
-  return wait(success({ groups: appGroups, apps: appList }));
+export async function fetchApiGroupList(query: { api_group_name?: string; app_code?: string }) {
+  const list = apiGroups.filter((item) => item.is_deleted === 0).filter((item) => {
+    return (!query.api_group_name || item.api_group_name.includes(query.api_group_name)) &&
+      (!query.app_code || item.app_code.includes(query.app_code));
+  });
+  return wait(success({ list, apps, apis }));
 }
 
-export async function saveAppGroup() {
-  return wait(success(true, '应用分组保存成功'));
-}
-
-export async function deleteAppGroup(id: string) {
-  return wait(success(id, '应用分组删除成功'));
-}
-
-export async function fetchApiGroups() {
-  return wait(success({ groups: apiGroups, apps: appList }));
+export async function fetchAppGroupList(query: { app_group_name?: string }) {
+  const list = appGroups.filter((item) => item.is_deleted === 0).filter((item) => {
+    return !query.app_group_name || item.app_group_name.includes(query.app_group_name);
+  });
+  return wait(success({ list, apps }));
 }
 
 export async function saveApiGroup() {
-  return wait(success(true, 'API分组保存成功'));
+  return wait(success(true, '保存成功'));
 }
 
-export async function deleteApiGroup(id: string) {
-  return wait(success(id, 'API分组删除成功'));
+export async function saveAppGroup() {
+  return wait(success(true, '保存成功'));
+}
+
+export async function deleteApiGroup() {
+  return wait(success(true, '删除成功'));
+}
+
+export async function deleteAppGroup() {
+  return wait(success(true, '删除成功'));
 }

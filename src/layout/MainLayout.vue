@@ -8,11 +8,22 @@
           <p>API调用控制组件</p>
         </div>
       </div>
-      <el-menu :default-active="route.path" router class="menu" background-color="transparent">
-        <el-menu-item v-for="item in menus" :key="item.path" :index="item.path">
-          <el-icon><component :is="item.icon" /></el-icon>
-          <span>{{ item.title }}</span>
-        </el-menu-item>
+      <el-menu :default-active="route.path" :default-openeds="defaultOpeneds" router class="menu" background-color="transparent">
+        <template v-for="item in menus" :key="item.path">
+          <el-sub-menu v-if="item.children?.length" :index="item.path">
+            <template #title>
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.title }}</span>
+            </template>
+            <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
+              {{ child.title }}
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="item.path">
+            <el-icon><component :is="item.icon" /></el-icon>
+            <span>{{ item.title }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </aside>
     <div class="main">
@@ -56,6 +67,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const currentTitle = computed(() => route.meta.title || '服务治理管理平台');
+const defaultOpeneds = menus.filter((item) => item.children?.length).map((item) => item.path);
 
 function logout() {
   authStore.logout();
@@ -110,6 +122,12 @@ function logout() {
 }
 
 .menu :deep(.el-menu-item) {
+  height: 44px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+}
+
+.menu :deep(.el-sub-menu__title) {
   height: 44px;
   border-radius: 12px;
   margin-bottom: 6px;

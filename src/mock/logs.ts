@@ -1,27 +1,20 @@
-import { remoteLogs } from './base';
+import { remoteCallLogs } from './base';
 import { success, wait } from '@/utils/mock';
-import type { PageQuery } from '@/types/common';
 
-interface LogQuery extends PageQuery {
-  callerApp?: string;
-  calleeApp?: string;
-  checkResult?: string;
-  timeRange?: string[];
-}
-
-export async function fetchRemoteLogs(query: LogQuery) {
-  const filtered = remoteLogs.filter((item) => {
-    const matchTime = !query.timeRange?.length || (item.time >= query.timeRange[0] && item.time <= query.timeRange[1]);
-    return (!query.callerApp || item.callerApp.includes(query.callerApp)) &&
-      (!query.calleeApp || item.calleeApp.includes(query.calleeApp)) &&
-      (!query.checkResult || item.checkResult === query.checkResult) &&
-      matchTime;
+export async function fetchRemoteCallLogs(query: {
+  call_decision_log_id?: string;
+  caller_app_code?: string;
+  callee_app_code?: string;
+  result?: string;
+  time_range?: string[];
+}) {
+  const list = remoteCallLogs.filter((item) => {
+    const inTime = !query.time_range?.length || (item.log_time >= query.time_range[0] && item.log_time <= query.time_range[1]);
+    return (!query.call_decision_log_id || item.call_decision_log_id.includes(query.call_decision_log_id)) &&
+      (!query.caller_app_code || item.caller_app_code.includes(query.caller_app_code)) &&
+      (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code)) &&
+      (!query.result || item.result === query.result) &&
+      inTime;
   });
-  const start = (query.page - 1) * query.pageSize;
-  return wait(success({
-    list: filtered.slice(start, start + query.pageSize),
-    total: filtered.length,
-    page: query.page,
-    pageSize: query.pageSize
-  }));
+  return wait(success(list));
 }
