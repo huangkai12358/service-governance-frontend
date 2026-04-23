@@ -23,13 +23,13 @@ const routes = [
         path: 'api/list',
         name: 'ApiList',
         component: () => import('@/views/api/ApiListView.vue'),
-        meta: { title: 'API列表' }
+        meta: { title: 'API 列表' }
       },
       {
         path: 'api/smartdoc',
         name: 'SmartDocImport',
         component: () => import('@/views/smartdoc/SmartDocImportView.vue'),
-        meta: { title: 'SmartDoc导入' }
+        meta: { title: 'SmartDoc 导入' }
       },
       {
         path: 'api/version-history',
@@ -41,19 +41,19 @@ const routes = [
         path: 'app/list',
         name: 'AppList',
         component: () => import('@/views/app/AppListView.vue'),
-        meta: { title: 'APP管理' }
+        meta: { title: 'APP 管理' }
       },
       {
         path: 'groups/api',
         name: 'ApiGroupList',
         component: () => import('@/views/groups/ApiGroupListView.vue'),
-        meta: { title: 'API分组' }
+        meta: { title: 'API 分组' }
       },
       {
         path: 'groups/app',
         name: 'AppGroupList',
         component: () => import('@/views/groups/AppGroupListView.vue'),
-        meta: { title: 'APP分组' }
+        meta: { title: 'APP 分组' }
       },
       {
         path: 'auth/app',
@@ -77,7 +77,7 @@ const routes = [
         path: 'logs/smartdoc-import',
         name: 'SmartDocImportLog',
         component: () => import('@/views/logs/SmartDocImportLogView.vue'),
-        meta: { title: 'SmartDoc导入历史记录' }
+        meta: { title: 'SmartDoc 导入历史记录' }
       },
       {
         path: 'logs/remote-call',

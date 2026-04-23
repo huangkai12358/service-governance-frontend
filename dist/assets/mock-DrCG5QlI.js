@@ -1,1 +1,0 @@
-function a(t,e="success"){return{code:0,message:e,data:t}}function i(t,e=300){return new Promise(n=>{window.setTimeout(()=>n(t),e)})}function c(t,e){const n=(e.page-1)*e.pageSize,s=n+e.pageSize;return{list:t.slice(n,s),total:t.length,page:e.page,pageSize:e.pageSize}}export{c as p,a as s,i as w};

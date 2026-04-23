@@ -1,6 +1,6 @@
 <template>
   <el-card class="panel-card" shadow="never">
-    <el-form :model="model" inline label-width="90px">
+    <el-form :model="model" inline>
       <slot />
       <el-form-item>
         <el-button type="primary" @click="$emit('search')">查询</el-button>

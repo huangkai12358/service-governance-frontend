@@ -5,10 +5,10 @@
         <div class="brand-mark">SG</div>
         <div>
           <strong>服务治理管理平台</strong>
-          <p>API调用控制组件</p>
+          <p>API 调用控制组件</p>
         </div>
       </div>
-      <el-menu :default-active="route.path" :default-openeds="defaultOpeneds" router class="menu" background-color="transparent">
+      <el-menu :default-active="route.path" router class="menu" background-color="transparent">
         <template v-for="item in menus" :key="item.path">
           <el-sub-menu v-if="item.children?.length" :index="item.path">
             <template #title>
@@ -29,7 +29,7 @@
     <div class="main">
       <header class="topbar panel-card">
         <div>
-          <h3>{{ currentTitle }}</h3>
+          <h3>服务治理管理平台</h3>
           <p>统一管理服务资产、授权关系、文档版本与远程调用日志</p>
         </div>
         <div class="topbar-actions">
@@ -55,7 +55,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowDown } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
@@ -65,9 +64,6 @@ import { menus } from './menu';
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-
-const currentTitle = computed(() => route.meta.title || '服务治理管理平台');
-const defaultOpeneds = menus.filter((item) => item.children?.length).map((item) => item.path);
 
 function logout() {
   authStore.logout();
@@ -143,6 +139,7 @@ function logout() {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .topbar {
@@ -177,5 +174,7 @@ function logout() {
 
 .content {
   min-height: 0;
+  min-width: 0;
+  width: 100%;
 }
 </style>

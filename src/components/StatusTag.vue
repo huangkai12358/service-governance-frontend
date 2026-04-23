@@ -19,7 +19,9 @@ const tagType = computed(() => {
     FAIL: 'danger',
     BYPASS: 'warning',
     GRANT: 'success',
-    REVOKE: 'danger'
+    REVOKE: 'danger',
+    新增: 'success',
+    撤销: 'danger'
   };
   return mapping[props.value] || 'info';
 });
@@ -36,7 +38,9 @@ const label = computed(() => {
     FAIL: 'FAIL',
     BYPASS: 'BYPASS',
     GRANT: '授权',
-    REVOKE: '撤销'
+    REVOKE: '撤销',
+    新增: '新增',
+    撤销: '撤销'
   };
   return mapping[props.value] || props.value;
 });

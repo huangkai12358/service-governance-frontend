@@ -10,11 +10,11 @@ export async function fetchRemoteCallLogs(query: {
 }) {
   const list = remoteCallLogs.filter((item) => {
     const inTime = !query.time_range?.length || (item.log_time >= query.time_range[0] && item.log_time <= query.time_range[1]);
-    return (!query.call_decision_log_id || item.call_decision_log_id.includes(query.call_decision_log_id)) &&
+    return (!query.call_decision_log_id || String(item.call_decision_log_id).includes(query.call_decision_log_id)) &&
       (!query.caller_app_code || item.caller_app_code.includes(query.caller_app_code)) &&
       (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code)) &&
       (!query.result || item.result === query.result) &&
       inTime;
-  });
+  }).sort((a, b) => b.log_time.localeCompare(a.log_time));
   return wait(success(list));
 }

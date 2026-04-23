@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
     <div class="page-title">
-      <h2>API分组</h2>
+      <h2>API 分组</h2>
       <p>管理 API 分组名称、所属 APP 以及分组下包含的 API。</p>
     </div>
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
@@ -14,7 +14,7 @@
           <el-button type="primary" @click="openCreate">新增分组</el-button>
         </div>
       </div>
-      <el-table :data="list" border row-key="id">
+      <el-table :data="pagedList" border row-key="id">
         <el-table-column type="expand">
           <template #default="{ row }">
             <el-tag v-for="path in row.api_paths" :key="path" style="margin-right:8px">{{ path }}</el-tag>
@@ -22,32 +22,38 @@
         </el-table-column>
         <el-table-column prop="api_group_name" label="分组名称" width="180" />
         <el-table-column prop="api_group_description" label="分组说明" min-width="240" />
-        <el-table-column prop="app_code" label="所属APP" width="180" />
-        <el-table-column label="包含的API" min-width="260">
-          <template #default="{ row }">{{ row.api_paths.join('，') }}</template>
-        </el-table-column>
+        <el-table-column prop="app_code" label="所属 APP" width="180" />
         <el-table-column label="操作" width="220">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="primary" @click="openBind(row)">修改包含的api</el-button>
+            <el-button link type="primary" @click="openBind(row)">修改组内 API</el-button>
             <el-button link type="danger" @click="removeGroup(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          layout="total, prev, pager, next"
+          :total="list.length"
+        />
+      </div>
     </el-card>
 
-    <el-dialog v-model="visible" :title="mode === 'create' ? '新增分组' : mode === 'edit' ? '编辑分组' : '修改包含的api'" width="680px">
+    <el-dialog v-model="visible" :title="mode === 'create' ? '新增分组' : mode === 'edit' ? '编辑分组' : '修改组内 API'" width="680px">
       <el-form :model="form" label-width="100px">
         <template v-if="mode === 'create'">
           <el-form-item label="分组名称"><el-input v-model="form.api_group_name" /></el-form-item>
           <el-form-item label="分组说明"><el-input v-model="form.api_group_description" type="textarea" /></el-form-item>
-          <el-form-item label="所属APP"><el-select v-model="form.app_code" style="width:100%"><el-option v-for="app in apps" :key="app.id" :label="`${app.app_code} / ${app.app_name}`" :value="app.app_code" /></el-select></el-form-item>
+          <el-form-item label="所属 APP"><el-select v-model="form.app_code" style="width:100%"><el-option v-for="app in apps" :key="app.id" :label="`${app.app_code} / ${app.app_name}`" :value="app.app_code" /></el-select></el-form-item>
         </template>
         <template v-else-if="mode === 'edit'">
           <el-form-item label="分组名称"><el-input v-model="form.api_group_name" /></el-form-item>
+          <el-form-item label="分组说明"><el-input v-model="form.api_group_description" type="textarea" /></el-form-item>
         </template>
         <template v-else>
-          <el-form-item label="包含API">
+          <el-form-item label="包含 API">
             <el-select v-model="form.api_ids" multiple filterable style="width:100%">
               <el-option v-for="api in currentApis" :key="api.id" :label="`${api.api_name} / ${api.api_path}`" :value="api.id" />
             </el-select>
@@ -76,6 +82,11 @@ const visible = ref(false);
 const mode = ref<'create' | 'edit' | 'bind'>('create');
 const form = reactive<any>({ id: '', api_group_name: '', api_group_description: '', app_code: '', api_ids: [] });
 const currentApis = computed(() => apis.value.filter((item) => item.app_code === form.app_code));
+const pagination = reactive({ page: 1, pageSize: 10 });
+const pagedList = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize;
+  return list.value.slice(start, start + pagination.pageSize);
+});
 
 async function loadData() {
   const { data } = await fetchApiGroupList(query);
@@ -86,6 +97,7 @@ async function loadData() {
 
 function resetQuery() {
   Object.assign(query, { api_group_name: '', app_code: '' });
+  pagination.page = 1;
   loadData();
 }
 

@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
     <div class="page-title">
-      <h2>APP分组</h2>
+      <h2>APP 分组</h2>
       <p>管理 APP 分组名称、分组说明以及分组下包含的 APP。</p>
     </div>
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
@@ -13,7 +13,7 @@
           <el-button type="primary" @click="openCreate">新增分组</el-button>
         </div>
       </div>
-      <el-table :data="list" border>
+      <el-table :data="pagedList" border>
         <el-table-column type="expand">
           <template #default="{ row }">
             <el-tag v-for="code in row.app_codes" :key="code" style="margin-right:8px">{{ code }}</el-tag>
@@ -21,20 +21,25 @@
         </el-table-column>
         <el-table-column prop="app_group_name" label="分组名称" width="180" />
         <el-table-column prop="app_group_description" label="分组说明" min-width="260" />
-        <el-table-column label="包含的APP" min-width="260">
-          <template #default="{ row }">{{ row.app_codes.join('，') }}</template>
-        </el-table-column>
         <el-table-column label="操作" width="220">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="primary" @click="openBind(row)">修改包含的app</el-button>
+            <el-button link type="primary" @click="openBind(row)">修改组内 APP</el-button>
             <el-button link type="danger" @click="removeGroup(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          layout="total, prev, pager, next"
+          :total="list.length"
+        />
+      </div>
     </el-card>
 
-    <el-dialog v-model="visible" :title="mode === 'create' ? '新增分组' : mode === 'edit' ? '编辑分组' : '修改包含的app'" width="680px">
+    <el-dialog v-model="visible" :title="mode === 'create' ? '新增分组' : mode === 'edit' ? '编辑分组' : '修改组内 APP'" width="680px">
       <el-form :model="form" label-width="100px">
         <template v-if="mode === 'create'">
           <el-form-item label="分组名称"><el-input v-model="form.app_group_name" /></el-form-item>
@@ -42,9 +47,10 @@
         </template>
         <template v-else-if="mode === 'edit'">
           <el-form-item label="分组名称"><el-input v-model="form.app_group_name" /></el-form-item>
+          <el-form-item label="分组说明"><el-input v-model="form.app_group_description" type="textarea" /></el-form-item>
         </template>
         <template v-else>
-          <el-form-item label="包含APP">
+          <el-form-item label="包含 APP">
             <el-select v-model="form.app_codes" multiple filterable style="width:100%">
               <el-option v-for="app in apps" :key="app.id" :label="`${app.app_code} / ${app.app_name}`" :value="app.app_code" />
             </el-select>
@@ -60,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
 import { deleteAppGroup, fetchAppGroupList, saveAppGroup } from '@/mock/group';
@@ -71,6 +77,11 @@ const apps = ref<any[]>([]);
 const visible = ref(false);
 const mode = ref<'create' | 'edit' | 'bind'>('create');
 const form = reactive<any>({ id: '', app_group_name: '', app_group_description: '', app_codes: [] });
+const pagination = reactive({ page: 1, pageSize: 10 });
+const pagedList = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize;
+  return list.value.slice(start, start + pagination.pageSize);
+});
 
 async function loadData() {
   const { data } = await fetchAppGroupList(query);
@@ -80,6 +91,7 @@ async function loadData() {
 
 function resetQuery() {
   Object.assign(query, { app_group_name: '' });
+  pagination.page = 1;
   loadData();
 }
 

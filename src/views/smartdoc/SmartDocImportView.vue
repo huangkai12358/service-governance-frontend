@@ -1,7 +1,7 @@
-<template>
+n<template>
   <div class="page-container">
     <div class="page-title">
-      <h2>SmartDoc导入</h2>
+      <h2>SmartDoc 导入</h2>
       <p>上传文档后进行解析，并按 path 对比新增 API、修改 API、删除 API。</p>
     </div>
     <el-card class="panel-card" shadow="never">
@@ -23,17 +23,19 @@
     <el-card v-if="diff" class="panel-card" shadow="never">
       <el-form :model="draft" label-width="100px" style="margin-bottom:20px">
         <el-form-item label="app_code">
-          <el-input v-model="draft.app_code" placeholder="优先从 SmartDoc 文档解析" />
+          <el-select v-model="draft.app_code" filterable style="width:100%">
+            <el-option v-for="app in appOptions" :key="app.id" :label="`${app.app_code} / ${app.app_name}`" :value="app.app_code" />
+          </el-select>
         </el-form-item>
         <el-form-item label="版本号">
-          <el-input v-model="draft.api_version_id" placeholder="优先从 SmartDoc 文档解析" />
+          <el-input v-model="draft.version" placeholder="优先从 SmartDoc 文档解析，若未解析到可手动填写" />
         </el-form-item>
         <el-form-item label="说明">
           <el-input v-model="draft.remark" type="textarea" />
         </el-form-item>
       </el-form>
       <el-tabs v-model="tab">
-        <el-tab-pane :label="`新增API（${diff.additions.length}）`" name="add">
+        <el-tab-pane :label="`新增 API（${diff.additions.length}）`" name="add">
           <div class="diff-grid">
             <DiffCard v-for="item in diff.additions" :key="item.id" type="added" :title="item.api_name" :subtitle="item.api_path" tag-text="新增API">
               <p>请求方法：{{ item.api_method }}</p>
@@ -41,7 +43,7 @@
             </DiffCard>
           </div>
         </el-tab-pane>
-        <el-tab-pane :label="`修改API（${diff.modifications.length}）`" name="modify">
+        <el-tab-pane :label="`修改 API（${diff.modifications.length}）`" name="modify">
           <div class="diff-grid">
             <DiffCard v-for="item in diff.modifications" :key="item.id" type="updated" :title="item.after.api_name" :subtitle="item.after.api_path" tag-text="修改API">
               <el-descriptions :column="1" border>
@@ -54,7 +56,7 @@
             </DiffCard>
           </div>
         </el-tab-pane>
-        <el-tab-pane :label="`删除API（${diff.deletions.length}）`" name="delete">
+        <el-tab-pane :label="`删除 API（${diff.deletions.length}）`" name="delete">
           <div class="diff-grid">
             <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="删除API">
               <p>请求方法：{{ item.api_method }}</p>
@@ -72,16 +74,18 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import DiffCard from '@/components/DiffCard.vue';
 import { analyzeSmartDoc, confirmSmartDocImport } from '@/mock/smartdoc';
+import { fetchApiOptions } from '@/mock/api';
 
 const step = ref(0);
 const diff = ref<any>(null);
 const tab = ref('add');
-const draft = reactive({ app_code: '', api_version_id: '', remark: '' });
+const draft = reactive({ app_code: '', version: '', remark: '' });
+const appOptions = ref<any[]>([]);
 
 async function analyze() {
   step.value = 1;
@@ -89,7 +93,7 @@ async function analyze() {
   diff.value = data;
   Object.assign(draft, {
     app_code: data.draft.app_code,
-    api_version_id: data.draft.api_version_id,
+    version: data.draft.version,
     remark: data.draft.remark
   });
   step.value = 2;
@@ -104,8 +108,13 @@ async function confirmImport() {
 function cancelImport() {
   diff.value = null;
   step.value = 0;
-  Object.assign(draft, { app_code: '', api_version_id: '', remark: '' });
+  Object.assign(draft, { app_code: '', version: '', remark: '' });
 }
+
+onMounted(async () => {
+  const { data } = await fetchApiOptions();
+  appOptions.value = data.apps;
+});
 </script>
 
 <style scoped>

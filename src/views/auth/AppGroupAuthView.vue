@@ -8,7 +8,7 @@
       <el-form-item label="应用组名称"><el-input v-model="query.app_group_name" clearable /></el-form-item>
     </PageSearch>
     <el-card class="panel-card" shadow="never">
-      <el-table :data="list" border>
+      <el-table :data="pagedList" border>
         <el-table-column prop="app_group_name" label="应用组" width="180" />
         <el-table-column label="应用组包含的应用" min-width="260">
           <template #default="{ row }">
@@ -22,6 +22,14 @@
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          layout="total, prev, pager, next"
+          :total="list.length"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="visible" :title="dialogTitle" width="960px">
@@ -48,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
 import { fetchAppGroupAuthList, saveAppGroupAuthorization } from '@/mock/auth';
@@ -61,6 +69,12 @@ const visible = ref(false);
 const dialogTitle = ref('新增权限');
 const checkedApiIds = ref<string[]>([]);
 const checkedGroupIds = ref<string[]>([]);
+const pagination = reactive({ page: 1, pageSize: 10 });
+
+const pagedList = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize;
+  return list.value.slice(start, start + pagination.pageSize);
+});
 
 async function loadData() {
   const { data } = await fetchAppGroupAuthList(query);
@@ -71,6 +85,7 @@ async function loadData() {
 
 function resetQuery() {
   Object.assign(query, { app_group_name: '' });
+  pagination.page = 1;
   loadData();
 }
 

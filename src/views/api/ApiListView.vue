@@ -1,13 +1,13 @@
 <template>
-  <div class="page-container">
+  <div class="page-container api-list-page">
     <div class="page-title">
       <h2>API列表</h2>
-      <p>按应用编码、应用名称、API名称、请求路径和版本号管理 API 资产。</p>
+      <p>按应用编码、应用名称、API 名称、请求路径和版本号管理 API 资产。</p>
     </div>
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
       <el-form-item label="应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
       <el-form-item label="应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
-      <el-form-item label="API名称"><el-input v-model="query.api_name" clearable /></el-form-item>
+      <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
       <el-form-item label="请求路径"><el-input v-model="query.api_path" clearable /></el-form-item>
       <el-form-item label="版本号"><el-input v-model="query.api_version_id" clearable /></el-form-item>
     </PageSearch>
@@ -21,7 +21,7 @@
       <el-table :data="tableData.list" border>
         <el-table-column prop="app_code" label="应用编码" width="160" />
         <el-table-column prop="app_name" label="应用名称" width="140" />
-        <el-table-column prop="api_name" label="API名称" min-width="160" />
+        <el-table-column prop="api_name" label="API 名称" min-width="160" />
         <el-table-column prop="api_path" label="请求路径" min-width="240" />
         <el-table-column prop="api_method" label="请求方法" width="110" />
         <el-table-column prop="api_version_id" label="版本号" width="120" />
@@ -53,7 +53,7 @@
             <el-option v-for="app in options.apps" :key="app.id" :label="`${app.app_code} / ${app.app_name}`" :value="app.app_code" />
           </el-select>
         </el-form-item>
-        <el-form-item label="API名称" prop="api_name"><el-input v-model="createForm.api_name" /></el-form-item>
+        <el-form-item label="API 名称" prop="api_name"><el-input v-model="createForm.api_name" /></el-form-item>
         <el-form-item label="请求路径" prop="api_path"><el-input v-model="createForm.api_path" /></el-form-item>
         <el-form-item label="请求方法" prop="api_method">
           <el-select v-model="createForm.api_method" style="width:100%">
@@ -78,10 +78,10 @@
 
     <el-dialog v-model="editVisible" title="编辑API" width="680px">
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="120px">
-        <el-form-item label="API名称" prop="api_name"><el-input v-model="editForm.api_name" /></el-form-item>
+        <el-form-item label="API 名称" prop="api_name"><el-input v-model="editForm.api_name" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="editForm.api_description" type="textarea" /></el-form-item>
         <el-form-item label="所在的API分组">
-          <el-select v-model="editForm.api_group_ids" multiple collapse-tags style="width:100%">
+          <el-select v-model="editForm.api_group_ids" multiple collapse-tags placeholder="请选择 API 分组" style="width:100%">
             <el-option v-for="group in currentEditGroups" :key="group.id" :label="group.api_group_name" :value="group.id" />
           </el-select>
         </el-form-item>
@@ -201,9 +201,9 @@ async function submitEdit() {
 }
 
 async function handleDelete(row: any) {
-  await ElMessageBox.confirm(`确认删除 API「${row.api_name}」吗？这会执行逻辑删除。`, '删除确认', { type: 'warning' });
+  await ElMessageBox.confirm(`确认删除 API「${row.api_name}」吗？`, '删除确认', { type: 'warning' });
   const { message } = await deleteApi();
-  ElMessage.success(`${message}，is_deleted 已设为 1`);
+  ElMessage.success(message);
 }
 
 onMounted(async () => {
@@ -211,3 +211,9 @@ onMounted(async () => {
   await loadData();
 });
 </script>
+
+<style scoped>
+.api-list-page {
+  min-width: 0;
+}
+</style>

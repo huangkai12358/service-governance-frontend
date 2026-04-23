@@ -2,7 +2,6 @@ import {
   Connection,
   Grid,
   Histogram,
-  Memo,
   Monitor,
   OfficeBuilding,
   Share
@@ -22,8 +21,8 @@ export const menus: MenuItem[] = [
     path: '/api',
     icon: Monitor,
     children: [
-      { title: 'API列表', path: '/api/list' },
-      { title: 'SmartDoc导入', path: '/api/smartdoc' },
+      { title: 'API 列表', path: '/api/list' },
+      { title: 'SmartDoc 导入', path: '/api/smartdoc' },
       { title: '历史版本管理', path: '/api/version-history' }
     ]
   },
@@ -31,15 +30,15 @@ export const menus: MenuItem[] = [
     title: 'APP管理',
     path: '/app',
     icon: OfficeBuilding,
-    children: [{ title: 'APP列表', path: '/app/list' }]
+    children: [{ title: 'APP 列表', path: '/app/list' }]
   },
   {
     title: '分组管理',
     path: '/groups',
     icon: Share,
     children: [
-      { title: 'API分组', path: '/groups/api' },
-      { title: 'APP分组', path: '/groups/app' }
+      { title: 'API 分组', path: '/groups/api' },
+      { title: 'APP 分组', path: '/groups/app' }
     ]
   },
   {
@@ -57,7 +56,7 @@ export const menus: MenuItem[] = [
     icon: Histogram,
     children: [
       { title: '权限配置历史记录', path: '/logs/auth-config' },
-      { title: 'SmartDoc导入历史记录', path: '/logs/smartdoc-import' },
+      { title: 'SmartDoc 导入历史记录', path: '/logs/smartdoc-import' },
       { title: '远程调用历史记录', path: '/logs/remote-call' }
     ]
   }

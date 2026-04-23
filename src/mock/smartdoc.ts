@@ -4,7 +4,7 @@ import type { SmartDocDiffResult } from '@/types/business';
 const smartDocDiff: SmartDocDiffResult = {
   draft: {
     app_code: 'pay-gateway',
-    api_version_id: 'v3.0.2',
+    version: 'v3.0.2',
     remark: '支付网关 SmartDoc 文档导入',
     file_name: 'pay-gateway-smartdoc-20260422.json',
     file_path: '/data/smartdoc/pay-gateway/pay-gateway-smartdoc-20260422.json'

@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
     <div class="page-title">
-      <h2>APP管理</h2>
+      <h2>APP 管理</h2>
       <p>管理应用编码、应用名称、应用说明以及当前版本号。</p>
     </div>
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
@@ -11,13 +11,13 @@
     <el-card class="panel-card" shadow="never">
       <div class="table-toolbar">
         <div class="right-actions">
-          <el-button type="primary" @click="openCreate">新增APP</el-button>
+          <el-button type="primary" @click="openCreate">新增 APP</el-button>
         </div>
       </div>
       <el-table :data="tableData.list" border>
         <el-table-column prop="app_code" label="应用编码" width="180" />
         <el-table-column prop="app_name" label="应用名称" width="150" />
-        <el-table-column prop="app_description" label="应用说明" min-width="280" />
+        <el-table-column prop="app_description" label="应用说明" min-width="240" />
         <el-table-column prop="current_version" label="当前版本号" width="120" />
         <el-table-column prop="create_time" label="创建时间" width="180" />
         <el-table-column prop="update_time" label="更新时间" width="180" />
@@ -40,7 +40,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="createVisible" title="新增APP" width="640px">
+    <el-dialog v-model="createVisible" title="新增 APP" width="640px">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-form-item label="应用编码" prop="app_code"><el-input v-model="createForm.app_code" /></el-form-item>
         <el-form-item label="应用名称" prop="app_name"><el-input v-model="createForm.app_name" /></el-form-item>
@@ -52,7 +52,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="editVisible" title="编辑APP" width="640px">
+    <el-dialog v-model="editVisible" title="编辑 APP" width="640px">
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="100px">
         <el-form-item label="应用名称" prop="app_name"><el-input v-model="editForm.app_name" /></el-form-item>
         <el-form-item label="应用说明"><el-input v-model="editForm.app_description" type="textarea" /></el-form-item>
@@ -63,22 +63,29 @@
       </template>
     </el-dialog>
 
-    <el-drawer v-model="detailVisible" title="APP详情" size="520px">
+    <el-drawer v-model="detailVisible" title="APP 详情" size="760px">
       <el-descriptions v-if="detail" :column="1" border>
         <el-descriptions-item label="应用编码">{{ detail.app_code }}</el-descriptions-item>
         <el-descriptions-item label="应用名称">{{ detail.app_name }}</el-descriptions-item>
         <el-descriptions-item label="应用说明">{{ detail.app_description || '-' }}</el-descriptions-item>
         <el-descriptions-item label="当前版本号">{{ detail.current_version }}</el-descriptions-item>
       </el-descriptions>
+      <h3 class="section-title" style="margin-top: 24px">包含的所有 API</h3>
+      <el-table :data="detailApis" border>
+        <el-table-column prop="api_name" label="API 名称" min-width="160" />
+        <el-table-column prop="api_path" label="请求路径" min-width="240" />
+        <el-table-column prop="api_method" label="请求方法" width="120" />
+      </el-table>
     </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
 import { deleteApp, fetchAppList, saveApp } from '@/mock/app';
+import { apis } from '@/mock/base';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '' });
 const tableData = reactive({ list: [] as any[], total: 0 });
@@ -90,6 +97,9 @@ const createFormRef = ref<FormInstance>();
 const editFormRef = ref<FormInstance>();
 const createForm = reactive({ app_code: '', app_name: '', app_description: '' });
 const editForm = reactive<any>({ id: '', app_name: '', app_description: '' });
+const allApis = ref<any[]>([]);
+
+const detailApis = computed(() => allApis.value.filter((item) => item.app_code === detail.value?.app_code));
 
 const createRules: FormRules = {
   app_code: [{ required: true, message: '请输入应用编码', trigger: 'blur' }],
@@ -149,4 +159,8 @@ async function handleDelete(row: any) {
 }
 
 onMounted(loadData);
+
+onMounted(async () => {
+  allApis.value = apis;
+});
 </script>

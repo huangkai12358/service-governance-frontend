@@ -94,7 +94,7 @@ export interface ModifiedApiDiff {
 
 export interface SmartDocImportDraft {
   app_code: string;
-  api_version_id: string;
+  version: string;
   remark: string;
   file_name: string;
   file_path: string;
@@ -109,9 +109,10 @@ export interface SmartDocDiffResult {
 
 export interface VersionHistoryItem {
   id: string;
+  api_version_id: bigint;
   app_code: string;
   app_name: string;
-  api_version_id: string;
+  version: string;
   file_name: string;
   file_path: string;
   remark: string;
@@ -173,7 +174,7 @@ export interface AuthorizationDelta {
 }
 
 export interface AuthConfigLogItem {
-  auth_log_id: string;
+  auth_log_id: bigint;
   caller_app_code: string;
   callee_app_code: string;
   api_name: string;
@@ -183,9 +184,9 @@ export interface AuthConfigLogItem {
 }
 
 export interface SmartDocImportLogItem {
-  id: string;
+  api_version_id: bigint;
   app_code: string;
-  api_version_id: string;
+  version: string;
   file_name: string;
   file_path: string;
   remark: string;
@@ -193,7 +194,7 @@ export interface SmartDocImportLogItem {
 }
 
 export interface RemoteCallLogItem {
-  call_decision_log_id: string;
+  call_decision_log_id: bigint;
   caller_app_code: string;
   callee_app_code: string;
   result: DecisionResult;

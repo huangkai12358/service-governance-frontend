@@ -61,9 +61,9 @@ export const appGroups: AppGroupItem[] = [
 ];
 
 export const versionHistories: VersionHistoryItem[] = [
-  { id: 'ver-01', app_code: 'pay-gateway', app_name: '支付网关', api_version_id: 'v3.0.2', file_name: 'pay-gateway-smartdoc-20260422.json', file_path: '/data/smartdoc/pay-gateway/pay-gateway-smartdoc-20260422.json', remark: '新增退款明细与幂等校验接口', create_time: '2026-04-22 09:10:00' },
-  { id: 'ver-02', app_code: 'order-service', app_name: '订单中心', api_version_id: 'v2.3.0', file_name: 'order-smartdoc-20260418.json', file_path: '/data/smartdoc/order/order-smartdoc-20260418.json', remark: '订单流程文档同步', create_time: '2026-04-18 15:12:00' },
-  { id: 'ver-03', app_code: 'marketing-service', app_name: '营销平台', api_version_id: 'v2.0.0', file_name: 'marketing-smartdoc-20260412.json', file_path: '/data/smartdoc/marketing/marketing-smartdoc-20260412.json', remark: '营销能力文档更新', create_time: '2026-04-12 10:30:00' }
+  { id: 'ver-01', api_version_id: 20260422090001n, app_code: 'pay-gateway', app_name: '支付网关', version: 'v3.0.2', file_name: 'pay-gateway-smartdoc-20260422.json', file_path: '/data/smartdoc/pay-gateway/pay-gateway-smartdoc-20260422.json', remark: '新增退款明细与幂等校验接口', create_time: '2026-04-22 09:10:00' },
+  { id: 'ver-02', api_version_id: 20260418151201n, app_code: 'order-service', app_name: '订单中心', version: 'v2.3.0', file_name: 'order-smartdoc-20260418.json', file_path: '/data/smartdoc/order/order-smartdoc-20260418.json', remark: '订单流程文档同步', create_time: '2026-04-18 15:12:00' },
+  { id: 'ver-03', api_version_id: 20260412103001n, app_code: 'marketing-service', app_name: '营销平台', version: 'v2.0.0', file_name: 'marketing-smartdoc-20260412.json', file_path: '/data/smartdoc/marketing/marketing-smartdoc-20260412.json', remark: '营销能力文档更新', create_time: '2026-04-12 10:30:00' }
 ];
 
 export const versionDetails: VersionDetail[] = [
@@ -129,7 +129,7 @@ export const appGroupAuthorizations: AppGroupAuthorization[] = [
 export const authConfigLogs: AuthConfigLogItem[] = Array.from({ length: 24 }).map((_, index) => {
   const api = apis[index % apis.length];
   return {
-    auth_log_id: `auth-log-${String(index + 1).padStart(3, '0')}`,
+    auth_log_id: BigInt(`202604230800${String(index + 1).padStart(2, '0')}`),
     caller_app_code: apps[index % apps.length].app_code,
     callee_app_code: api.app_code,
     api_name: api.api_name,
@@ -140,9 +140,9 @@ export const authConfigLogs: AuthConfigLogItem[] = Array.from({ length: 24 }).ma
 });
 
 export const smartDocImportLogs: SmartDocImportLogItem[] = versionHistories.map((item, index) => ({
-  id: `import-log-${index + 1}`,
-  app_code: item.app_code,
   api_version_id: item.api_version_id,
+  app_code: item.app_code,
+  version: item.version,
   file_name: item.file_name,
   file_path: item.file_path,
   remark: item.remark,
@@ -154,7 +154,7 @@ export const remoteCallLogs: RemoteCallLogItem[] = Array.from({ length: 24 }).ma
   const callee = apps[(index + 1) % apps.length];
   const result = (['SUCCESS', 'FAIL', 'BYPASS'] as const)[index % 3];
   return {
-    call_decision_log_id: `call-log-${String(index + 1).padStart(3, '0')}`,
+    call_decision_log_id: BigInt(`202604231000${String(index + 1).padStart(2, '0')}`),
     caller_app_code: caller.app_code,
     callee_app_code: callee.app_code,
     result,
