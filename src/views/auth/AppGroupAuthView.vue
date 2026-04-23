@@ -26,30 +26,52 @@
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="list.length"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
 
-    <el-dialog v-model="visible" :title="dialogTitle" width="960px">
+    <el-dialog v-model="visible" :title="dialogTitle" width="1080px">
       <div class="auth-editor">
         <div class="editor-column">
-          <h3 class="section-title">左侧 API 列表</h3>
+          <h3 class="section-title">API 列表</h3>
           <el-checkbox-group v-model="checkedApiIds">
             <el-checkbox v-for="item in apiList" :key="item.id" :label="item.id">{{ item.api_path }}</el-checkbox>
           </el-checkbox-group>
         </div>
         <div class="editor-column">
-          <h3 class="section-title">右侧 API 分组</h3>
-          <el-checkbox-group v-model="checkedGroupIds">
-            <el-checkbox v-for="group in apiGroups" :key="group.id" :label="group.id">{{ group.api_group_name }}</el-checkbox>
-          </el-checkbox-group>
+          <h3 class="section-title">从分组中选择</h3>
+          <el-collapse v-model="activeGroups">
+            <el-collapse-item v-for="group in apiGroups" :key="group.id" :name="group.id">
+              <template #title>
+                <div class="group-title" @click.stop>
+                  <el-checkbox
+                    :model-value="isGroupChecked(group)"
+                    :indeterminate="isGroupIndeterminate(group)"
+                    @change="toggleGroup(group, $event)"
+                  >
+                    {{ group.api_group_name }}
+                  </el-checkbox>
+                </div>
+              </template>
+              <el-checkbox-group v-model="checkedApiIds">
+                <el-checkbox v-for="api in getGroupApis(group)" :key="api.id" :label="api.id">
+                  {{ api.api_path }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </el-collapse-item>
+          </el-collapse>
         </div>
       </div>
+      <div class="auth-summary">
+        总计：已勾选 {{ checkedApiIds.length }} 个权限
+      </div>
       <template #footer>
-        <el-button type="primary" @click="submit">确认</el-button>
         <el-button @click="visible = false">取消</el-button>
+        <el-button type="primary" @click="submit">确认</el-button>
       </template>
     </el-dialog>
   </div>
@@ -68,8 +90,8 @@ const apiGroups = ref<any[]>([]);
 const visible = ref(false);
 const dialogTitle = ref('新增权限');
 const checkedApiIds = ref<string[]>([]);
-const checkedGroupIds = ref<string[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
+const activeGroups = ref<string[]>([]);
 
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
@@ -89,11 +111,38 @@ function resetQuery() {
   loadData();
 }
 
+function handlePageSizeChange() {
+  pagination.page = 1;
+}
+
 function openDialog(_: any, title: string) {
   dialogTitle.value = title;
   checkedApiIds.value = [];
-  checkedGroupIds.value = [];
+  activeGroups.value = apiGroups.value.map((item) => item.id);
   visible.value = true;
+}
+
+function getGroupApis(group: any) {
+  return apiList.value.filter((item) => group.api_ids.includes(item.id));
+}
+
+function isGroupChecked(group: any) {
+  return group.api_ids.length > 0 && group.api_ids.every((id: string) => checkedApiIds.value.includes(id));
+}
+
+function isGroupIndeterminate(group: any) {
+  const checkedCount = group.api_ids.filter((id: string) => checkedApiIds.value.includes(id)).length;
+  return checkedCount > 0 && checkedCount < group.api_ids.length;
+}
+
+function toggleGroup(group: any, checked: string | number | boolean) {
+  const next = new Set(checkedApiIds.value);
+  if (checked) {
+    group.api_ids.forEach((id: string) => next.add(id));
+  } else {
+    group.api_ids.forEach((id: string) => next.delete(id));
+  }
+  checkedApiIds.value = Array.from(next);
 }
 
 async function submit() {
@@ -114,11 +163,27 @@ onMounted(loadData);
 
 .editor-column {
   min-height: 320px;
+  max-height: 520px;
+  overflow: auto;
   padding: 16px;
   border: 1px solid var(--sg-border);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+}
+
+.auth-summary {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--sg-text);
+  font-weight: 600;
 }
 </style>

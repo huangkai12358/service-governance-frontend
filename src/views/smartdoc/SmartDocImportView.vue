@@ -66,8 +66,8 @@ n<template>
         </el-tab-pane>
       </el-tabs>
       <div class="actions">
-        <el-button type="primary" @click="confirmImport">确认导入</el-button>
         <el-button @click="cancelImport">取消</el-button>
+        <el-button type="primary" @click="confirmImport">确认导入</el-button>
       </div>
     </el-card>
   </div>

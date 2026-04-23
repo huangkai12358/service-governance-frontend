@@ -9,7 +9,7 @@
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
       <el-form-item label="被调用方应用编码"><el-input v-model="query.callee_app_code" clearable /></el-form-item>
       <el-form-item label="结果">
-        <el-select v-model="query.result" clearable placeholder="请选择结果" style="width:160px">
+        <el-select v-model="query.result" clearable style="width:160px">
           <el-option label="SUCCESS" value="SUCCESS" />
           <el-option label="FAIL" value="FAIL" />
           <el-option label="BYPASS" value="BYPASS" />
@@ -43,8 +43,10 @@
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="list.length"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -80,6 +82,10 @@ function resetQuery() {
   Object.assign(query, { call_decision_log_id: '', caller_app_code: '', callee_app_code: '', result: '', time_range: [] });
   pagination.page = 1;
   loadData();
+}
+
+function handlePageSizeChange() {
+  pagination.page = 1;
 }
 
 onMounted(loadData);

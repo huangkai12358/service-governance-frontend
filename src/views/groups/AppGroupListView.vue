@@ -33,8 +33,10 @@
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="list.length"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -93,6 +95,10 @@ function resetQuery() {
   Object.assign(query, { app_group_name: '' });
   pagination.page = 1;
   loadData();
+}
+
+function handlePageSizeChange() {
+  pagination.page = 1;
 }
 
 function openCreate() {

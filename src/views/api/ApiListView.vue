@@ -39,9 +39,11 @@
         <el-pagination
           v-model:current-page="query.page"
           v-model:page-size="query.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="tableData.total"
           @current-change="loadData"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -81,7 +83,7 @@
         <el-form-item label="API 名称" prop="api_name"><el-input v-model="editForm.api_name" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="editForm.api_description" type="textarea" /></el-form-item>
         <el-form-item label="所在的API分组">
-          <el-select v-model="editForm.api_group_ids" multiple collapse-tags placeholder="请选择 API 分组" style="width:100%">
+          <el-select v-model="editForm.api_group_ids" multiple collapse-tags style="width:100%">
             <el-option v-for="group in currentEditGroups" :key="group.id" :label="group.api_group_name" :value="group.id" />
           </el-select>
         </el-form-item>
@@ -166,6 +168,11 @@ async function loadData() {
 
 function resetQuery() {
   Object.assign(query, { page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', api_version_id: '' });
+  loadData();
+}
+
+function handlePageSizeChange() {
+  query.page = 1;
   loadData();
 }
 

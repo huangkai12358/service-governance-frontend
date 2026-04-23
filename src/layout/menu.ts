@@ -17,7 +17,7 @@ export interface MenuItem {
 export const menus: MenuItem[] = [
   { title: '首页', path: '/dashboard', icon: Grid },
   {
-    title: 'API管理',
+    title: 'API 管理',
     path: '/api',
     icon: Monitor,
     children: [
@@ -27,7 +27,7 @@ export const menus: MenuItem[] = [
     ]
   },
   {
-    title: 'APP管理',
+    title: 'APP 管理',
     path: '/app',
     icon: OfficeBuilding,
     children: [{ title: 'APP 列表', path: '/app/list' }]

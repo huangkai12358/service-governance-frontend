@@ -33,9 +33,11 @@
         <el-pagination
           v-model:current-page="query.page"
           v-model:page-size="query.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="tableData.total"
           @current-change="loadData"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -118,6 +120,11 @@ async function loadData() {
 
 function resetQuery() {
   Object.assign(query, { page: 1, pageSize: 10, app_code: '', app_name: '' });
+  loadData();
+}
+
+function handlePageSizeChange() {
+  query.page = 1;
   loadData();
 }
 

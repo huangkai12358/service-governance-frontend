@@ -158,7 +158,7 @@ export const remoteCallLogs: RemoteCallLogItem[] = Array.from({ length: 24 }).ma
     caller_app_code: caller.app_code,
     callee_app_code: callee.app_code,
     result,
-    decision_reason: result === 'SUCCESS' ? '命中授权配置，鉴权通过' : result === 'FAIL' ? '未命中授权配置或鉴权凭证失效' : '白名单应用，绕过鉴权',
+    decision_reason: result === 'SUCCESS' ? '调用关系校验通过' : result === 'FAIL' ? '应用身份错误或无调用权限' : '鉴权服务暂时不可用',
     log_time: `2026-04-${String((index % 20) + 1).padStart(2, '0')} ${String((index % 12) + 8).padStart(2, '0')}:${String((index * 5) % 60).padStart(2, '0')}:00`
   };
 });

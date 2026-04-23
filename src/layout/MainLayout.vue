@@ -27,26 +27,19 @@
       </el-menu>
     </aside>
     <div class="main">
-      <header class="topbar panel-card">
-        <div>
-          <h3>服务治理管理平台</h3>
-          <p>统一管理服务资产、授权关系、文档版本与远程调用日志</p>
-        </div>
-        <div class="topbar-actions">
-          <el-tag type="success">当前环境：Mock Sandbox</el-tag>
-          <el-dropdown>
-            <span class="user-trigger">
-              {{ authStore.user?.username }}
-              <el-icon><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </header>
+      <div class="userbar">
+        <el-dropdown>
+          <span class="user-trigger">
+            {{ authStore.user?.username }}
+            <el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
       <main class="content">
         <router-view />
       </main>
@@ -136,45 +129,45 @@ function logout() {
 }
 
 .main {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  position: relative;
   min-width: 0;
+  padding: 10px 0px;
 }
 
-.topbar {
+.userbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  padding: 18px 22px;
-}
-
-.topbar h3 {
-  margin: 0 0 4px;
-  font-size: 22px;
-}
-
-.topbar p {
-  margin: 0;
-  color: var(--sg-subtext);
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
 }
 
 .user-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px 0 14px;
+  border: 1px solid var(--sg-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   cursor: pointer;
+  color: var(--sg-text);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .content {
   min-height: 0;
   min-width: 0;
   width: 100%;
+  padding-top: 2px;
+}
+
+.content :deep(.page-title) {
+  padding-right: 148px;
 }
 </style>

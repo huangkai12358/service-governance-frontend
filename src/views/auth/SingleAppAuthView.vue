@@ -27,8 +27,10 @@
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="list.length"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -36,7 +38,7 @@
     <el-dialog v-model="visible" title="修改授权" width="1180px">
       <div v-if="editorData" class="auth-editor">
         <div class="editor-column">
-          <h3 class="section-title">左侧 API 列表</h3>
+          <h3 class="section-title">API 列表</h3>
           <el-checkbox-group v-model="checkedApiIds">
             <el-checkbox v-for="item in editorData.apis" :key="item.id" :label="item.id">
               {{ item.api_path }}
@@ -44,7 +46,7 @@
           </el-checkbox-group>
         </div>
         <div class="editor-column">
-          <h3 class="section-title">右侧 API 分组</h3>
+          <h3 class="section-title">从分组中选择</h3>
           <el-collapse v-model="activeGroups">
             <el-collapse-item v-for="group in editorData.api_groups" :key="group.id" :name="group.id">
               <template #title>
@@ -69,14 +71,28 @@
         <div class="editor-column">
           <h3 class="section-title">变更预览</h3>
           <el-alert title="新增权限" type="success" :closable="false" />
-          <p>{{ delta.added_api_paths.join('、') || '无' }}</p>
+          <div class="change-tags">
+            <el-tag v-for="path in delta.added_api_paths" :key="path" type="success">
+              {{ path }}
+            </el-tag>
+            <span v-if="!delta.added_api_paths.length" class="empty-text">无</span>
+          </div>
           <el-alert title="撤销权限" type="warning" :closable="false" />
-          <p>{{ delta.revoked_api_paths.join('、') || '无' }}</p>
+          <div class="change-tags">
+            <el-tag v-for="path in delta.revoked_api_paths" :key="path" type="warning">
+              {{ path }}
+            </el-tag>
+            <span v-if="!delta.revoked_api_paths.length" class="empty-text">无</span>
+          </div>
+          <el-divider />
+          <div class="change-summary">
+            总计：新增 {{ delta.added_api_paths.length }} 个权限，撤销 {{ delta.revoked_api_paths.length }} 个权限
+          </div>
         </div>
       </div>
       <template #footer>
-        <el-button type="primary" @click="submitEdit">确认</el-button>
         <el-button @click="visible = false">取消</el-button>
+        <el-button type="primary" @click="submitEdit">确认</el-button>
       </template>
     </el-dialog>
   </div>
@@ -112,6 +128,10 @@ function resetQuery() {
   Object.assign(query, { caller_app_code: '', callee_app_code: '' });
   pagination.page = 1;
   loadData();
+}
+
+function handlePageSizeChange() {
+  pagination.page = 1;
 }
 
 async function openEditor(id: string) {
@@ -177,5 +197,25 @@ onMounted(loadData);
 .group-title {
   display: flex;
   align-items: center;
+}
+
+.change-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.empty-text {
+  color: var(--sg-subtext);
+}
+
+.change-summary {
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--sg-text);
+  font-weight: 600;
 }
 </style>

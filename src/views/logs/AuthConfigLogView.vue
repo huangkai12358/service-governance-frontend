@@ -11,7 +11,7 @@
       <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
       <el-form-item label="API 路径"><el-input v-model="query.api_path" clearable /></el-form-item>
       <el-form-item label="操作类型">
-        <el-select v-model="query.operation_type" clearable placeholder="请选择操作类型" style="width:160px">
+        <el-select v-model="query.operation_type" clearable style="width:160px">
           <el-option label="新增" value="新增" />
           <el-option label="撤销" value="撤销" />
         </el-select>
@@ -47,8 +47,10 @@
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
           :total="list.length"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -86,6 +88,10 @@ function resetQuery() {
   Object.assign(query, { auth_log_id: '', caller_app_code: '', callee_app_code: '', api_name: '', api_path: '', operation_type: '', time_range: [] });
   pagination.page = 1;
   loadData();
+}
+
+function handlePageSizeChange() {
+  pagination.page = 1;
 }
 
 onMounted(loadData);
