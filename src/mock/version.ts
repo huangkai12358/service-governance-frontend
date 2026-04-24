@@ -20,7 +20,7 @@ export async function fetchVersionList(query: VersionListQuery) {
   return wait(success(list));
 }
 
-export async function fetchVersionDetail(id: string) {
+export async function fetchVersionDetail(id: number) {
   return wait(success(versionDetails.find((item) => item.version.id === id) || null));
 }
 

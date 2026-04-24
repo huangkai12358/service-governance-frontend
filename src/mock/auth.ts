@@ -10,7 +10,7 @@ export async function fetchSingleAppAuthList(query: { caller_app_code?: string; 
   return wait(success(list));
 }
 
-export async function fetchSingleAppAuthEditor(id: string) {
+export async function fetchSingleAppAuthEditor(id: number) {
   const current = singleAppAuthorizations.find((item) => item.id === id);
   const calleeApis = apis.filter((item) => item.app_code === current?.callee_app_code && item.is_deleted === 0);
   const calleeGroups = apiGroups.filter((item) => item.app_code === current?.callee_app_code && item.is_deleted === 0);
@@ -23,7 +23,7 @@ export async function fetchSingleAppAuthEditor(id: string) {
   return wait(success({ current, data }));
 }
 
-export function calcAuthorizationDelta(originalApiIds: string[], nextApiIds: string[]): AuthorizationDelta {
+export function calcAuthorizationDelta(originalApiIds: number[], nextApiIds: number[]): AuthorizationDelta {
   const originalPaths = apis.filter((item) => originalApiIds.includes(item.id)).map((item) => item.api_path);
   const nextPaths = apis.filter((item) => nextApiIds.includes(item.id)).map((item) => item.api_path);
   return {

@@ -18,14 +18,14 @@ export interface OverviewStats {
 }
 
 export interface ActivityRecord {
-  id: string;
+  id: number;
   title: string;
   description: string;
   time: string;
 }
 
 export interface AppItem {
-  id: string;
+  id: number;
   app_code: string;
   app_name: string;
   app_description: string;
@@ -36,15 +36,16 @@ export interface AppItem {
 }
 
 export interface ApiItem {
-  id: string;
+  id: number;
   app_code: string;
   app_name: string;
   api_name: string;
   api_path: string;
   api_method: HttpMethod;
-  api_version_id: string;
+  api_version_id: bigint;
+  version: string;
   api_description: string;
-  api_group_ids: string[];
+  api_group_ids: number[];
   api_group_names: string[];
   create_time: string;
   update_time: string;
@@ -52,12 +53,12 @@ export interface ApiItem {
 }
 
 export interface ApiGroupItem {
-  id: string;
+  id: number;
   api_group_name: string;
   api_group_description: string;
   app_code: string;
   app_name: string;
-  api_ids: string[];
+  api_ids: number[];
   api_paths: string[];
   create_time: string;
   update_time: string;
@@ -65,7 +66,7 @@ export interface ApiGroupItem {
 }
 
 export interface AppGroupItem {
-  id: string;
+  id: number;
   app_group_name: string;
   app_group_description: string;
   app_codes: string[];
@@ -76,7 +77,7 @@ export interface AppGroupItem {
 }
 
 export interface VersionDiffItem {
-  id: string;
+  id: number;
   app_code: string;
   app_name: string;
   api_name: string;
@@ -86,7 +87,7 @@ export interface VersionDiffItem {
 }
 
 export interface ModifiedApiDiff {
-  id: string;
+  id: number;
   before: VersionDiffItem;
   after: VersionDiffItem;
   changed_fields: Array<'api_name' | 'api_method' | 'api_description'>;
@@ -108,7 +109,7 @@ export interface SmartDocDiffResult {
 }
 
 export interface VersionHistoryItem {
-  id: string;
+  id: number;
   api_version_id: bigint;
   app_code: string;
   app_name: string;
@@ -122,7 +123,7 @@ export interface VersionHistoryItem {
 export interface VersionDetail {
   version: VersionHistoryItem;
   apis: Array<{
-    id: string;
+    id: number;
     api_name: string;
     api_path: string;
     api_method: HttpMethod;
@@ -135,17 +136,17 @@ export interface VersionDetail {
 }
 
 export interface SingleAppAuthorization {
-  id: string;
+  id: number;
   caller_app_code: string;
   caller_app_name: string;
   callee_app_code: string;
   callee_app_name: string;
   api_paths: string[];
-  api_group_ids: string[];
+  api_group_ids: number[];
 }
 
 export interface AppGroupAuthorization {
-  id: string;
+  id: number;
   app_group_name: string;
   app_codes: string[];
   app_names: string[];
@@ -153,19 +154,19 @@ export interface AppGroupAuthorization {
 
 export interface AuthorizationEditorData {
   apis: Array<{
-    id: string;
+    id: number;
     api_name: string;
     api_path: string;
     app_code: string;
   }>;
   api_groups: Array<{
-    id: string;
+    id: number;
     api_group_name: string;
     app_code: string;
-    api_ids: string[];
+    api_ids: number[];
   }>;
-  checked_api_ids: string[];
-  checked_group_ids: string[];
+  checked_api_ids: number[];
+  checked_group_ids: number[];
 }
 
 export interface AuthorizationDelta {

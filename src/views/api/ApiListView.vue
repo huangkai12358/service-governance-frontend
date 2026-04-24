@@ -9,7 +9,7 @@
       <el-form-item label="应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
       <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
       <el-form-item label="请求路径"><el-input v-model="query.api_path" clearable /></el-form-item>
-      <el-form-item label="版本号"><el-input v-model="query.api_version_id" clearable /></el-form-item>
+      <el-form-item label="版本号"><el-input v-model="query.version" clearable /></el-form-item>
     </PageSearch>
 
     <el-card class="panel-card" shadow="never">
@@ -24,7 +24,7 @@
         <el-table-column prop="api_name" label="API 名称" min-width="160" />
         <el-table-column prop="api_path" label="请求路径" min-width="240" />
         <el-table-column prop="api_method" label="请求方法" width="110" />
-        <el-table-column prop="api_version_id" label="版本号" width="120" />
+        <el-table-column prop="version" label="版本号" width="120" />
         <el-table-column prop="create_time" label="创建时间" width="180" />
         <el-table-column prop="update_time" label="更新时间" width="180" />
         <el-table-column label="操作" width="180" fixed="right">
@@ -113,7 +113,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import PageSearch from '@/components/PageSearch.vue';
 import { deleteApi, fetchApiList, fetchApiOptions, saveApi } from '@/mock/api';
 
-const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', api_version_id: '' });
+const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', version: '' });
 const tableData = reactive({ list: [] as any[], total: 0 });
 const options = reactive({ apps: [] as any[], apiGroups: [] as any[] });
 const detailVisible = ref(false);
@@ -133,7 +133,7 @@ const createForm = reactive<any>({
 });
 
 const editForm = reactive<any>({
-  id: '',
+  id: 0,
   app_code: '',
   api_name: '',
   api_description: '',
@@ -167,7 +167,7 @@ async function loadData() {
 }
 
 function resetQuery() {
-  Object.assign(query, { page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', api_version_id: '' });
+  Object.assign(query, { page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', version: '' });
   loadData();
 }
 

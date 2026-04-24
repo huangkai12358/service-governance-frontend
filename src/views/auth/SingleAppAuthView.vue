@@ -39,9 +39,11 @@
       <div v-if="editorData" class="auth-editor">
         <div class="editor-column">
           <h3 class="section-title">API 列表</h3>
-          <el-checkbox-group v-model="checkedApiIds">
-            <el-checkbox v-for="item in editorData.apis" :key="item.id" :label="item.id">
-              {{ item.api_path }}
+          <el-input v-model="apiKeyword" clearable placeholder="搜索 API 名称或请求路径" />
+          <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
+            <el-checkbox v-for="item in filteredApis" :key="item.id" :label="item.id">
+              <span class="option-title">{{ item.api_name }}</span>
+              <span class="option-subtitle">{{ item.api_path }}</span>
             </el-checkbox>
           </el-checkbox-group>
         </div>
@@ -50,19 +52,20 @@
           <el-collapse v-model="activeGroups">
             <el-collapse-item v-for="group in editorData.api_groups" :key="group.id" :name="group.id">
               <template #title>
-                <div class="group-title" @click.stop>
+                <div class="group-title">
                   <el-checkbox
                     :model-value="isGroupChecked(group)"
                     :indeterminate="isGroupIndeterminate(group)"
+                    @click.stop
                     @change="toggleGroup(group, $event)"
-                  >
-                    {{ group.api_group_name }}
-                  </el-checkbox>
+                  />
+                  <span class="group-name">{{ group.api_group_name }}</span>
                 </div>
               </template>
-              <el-checkbox-group v-model="checkedApiIds">
+              <el-checkbox-group v-model="checkedApiIds" class="group-api-list">
                 <el-checkbox v-for="api in getGroupApis(group)" :key="api.id" :label="api.id">
-                  {{ api.api_path }}
+                  <span class="option-title">{{ api.api_name }}</span>
+                  <span class="option-subtitle">{{ api.api_path }}</span>
                 </el-checkbox>
               </el-checkbox-group>
             </el-collapse-item>
@@ -70,23 +73,29 @@
         </div>
         <div class="editor-column">
           <h3 class="section-title">变更预览</h3>
-          <el-alert title="新增权限" type="success" :closable="false" />
-          <div class="change-tags">
-            <el-tag v-for="path in delta.added_api_paths" :key="path" type="success">
-              {{ path }}
-            </el-tag>
-            <span v-if="!delta.added_api_paths.length" class="empty-text">无</span>
-          </div>
-          <el-alert title="撤销权限" type="warning" :closable="false" />
-          <div class="change-tags">
-            <el-tag v-for="path in delta.revoked_api_paths" :key="path" type="warning">
-              {{ path }}
-            </el-tag>
-            <span v-if="!delta.revoked_api_paths.length" class="empty-text">无</span>
-          </div>
-          <el-divider />
           <div class="change-summary">
-            总计：新增 {{ delta.added_api_paths.length }} 个权限，撤销 {{ delta.revoked_api_paths.length }} 个权限
+            <span>总计</span>
+            <el-tag>共 {{ checkedApiIds.length }} 个</el-tag>
+            <el-tag type="success">新增 {{ delta.added_api_paths.length }} 个</el-tag>
+            <el-tag type="warning">撤销 {{ delta.revoked_api_paths.length }} 个</el-tag>
+          </div>
+          <div class="change-section">
+            <div class="change-section-title success-title">新增权限</div>
+            <div class="change-tags">
+              <el-tag v-for="path in delta.added_api_paths" :key="path" type="success">
+                {{ path }}
+              </el-tag>
+              <span v-if="!delta.added_api_paths.length" class="empty-text">无新增权限</span>
+            </div>
+          </div>
+          <div class="change-section">
+            <div class="change-section-title warning-title">撤销权限</div>
+            <div class="change-tags">
+              <el-tag v-for="path in delta.revoked_api_paths" :key="path" type="warning">
+                {{ path }}
+              </el-tag>
+              <span v-if="!delta.revoked_api_paths.length" class="empty-text">无撤销权限</span>
+            </div>
           </div>
         </div>
       </div>
@@ -108,15 +117,21 @@ const query = reactive({ caller_app_code: '', callee_app_code: '' });
 const list = ref<any[]>([]);
 const visible = ref(false);
 const editorData = ref<any>(null);
-const originalApiIds = ref<string[]>([]);
-const checkedApiIds = ref<string[]>([]);
+const originalApiIds = ref<number[]>([]);
+const checkedApiIds = ref<number[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
-const activeGroups = ref<string[]>([]);
+const activeGroups = ref<number[]>([]);
+const apiKeyword = ref('');
 
 const delta = computed(() => calcAuthorizationDelta(originalApiIds.value, checkedApiIds.value));
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
+});
+const filteredApis = computed(() => {
+  const keyword = apiKeyword.value.trim();
+  const source = editorData.value?.apis || [];
+  return source.filter((api: any) => !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword));
 });
 
 async function loadData() {
@@ -134,12 +149,13 @@ function handlePageSizeChange() {
   pagination.page = 1;
 }
 
-async function openEditor(id: string) {
+async function openEditor(id: number) {
   const { data } = await fetchSingleAppAuthEditor(id);
   editorData.value = data.data;
   originalApiIds.value = [...data.data.checked_api_ids];
   checkedApiIds.value = [...data.data.checked_api_ids];
-  activeGroups.value = data.data.api_groups.map((item: any) => item.id);
+  activeGroups.value = [];
+  apiKeyword.value = '';
   visible.value = true;
 }
 
@@ -148,20 +164,20 @@ function getGroupApis(group: any) {
 }
 
 function isGroupChecked(group: any) {
-  return group.api_ids.length > 0 && group.api_ids.every((id: string) => checkedApiIds.value.includes(id));
+  return group.api_ids.length > 0 && group.api_ids.every((id: number) => checkedApiIds.value.includes(id));
 }
 
 function isGroupIndeterminate(group: any) {
-  const count = group.api_ids.filter((id: string) => checkedApiIds.value.includes(id)).length;
+  const count = group.api_ids.filter((id: number) => checkedApiIds.value.includes(id)).length;
   return count > 0 && count < group.api_ids.length;
 }
 
 function toggleGroup(group: any, checked: string | number | boolean) {
   const next = new Set(checkedApiIds.value);
   if (checked) {
-    group.api_ids.forEach((id: string) => next.add(id));
+    group.api_ids.forEach((id: number) => next.add(id));
   } else {
-    group.api_ids.forEach((id: string) => next.delete(id));
+    group.api_ids.forEach((id: number) => next.delete(id));
   }
   checkedApiIds.value = Array.from(next);
 }
@@ -197,14 +213,68 @@ onMounted(loadData);
 .group-title {
   display: flex;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.group-name {
+  flex: 1;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+.api-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+}
+
+.api-checkbox-list :deep(.el-checkbox) {
+  height: auto;
+  align-items: flex-start;
+  margin-right: 0;
+  padding: 6px 0;
+}
+
+.group-api-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0 0 24px;
+}
+
+.group-api-list :deep(.el-checkbox) {
+  height: auto;
+  align-items: flex-start;
+  margin-right: 0;
+}
+
+.option-title {
+  display: block;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+.option-subtitle {
+  display: block;
+  color: var(--sg-subtext);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 .change-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  min-height: 32px;
-  align-items: center;
+  align-content: flex-start;
+  min-height: 88px;
+  max-height: 150px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .empty-text {
@@ -212,10 +282,33 @@ onMounted(loadData);
 }
 
 .change-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px;
   border-radius: 10px;
-  background: #f8fafc;
+  background: #f1f5f9;
   color: var(--sg-text);
   font-weight: 600;
+}
+
+.change-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.change-section-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.success-title {
+  color: #16a34a;
+}
+
+.warning-title {
+  color: #d97706;
 }
 </style>

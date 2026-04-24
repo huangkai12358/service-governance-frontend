@@ -15,7 +15,7 @@ export async function fetchAppList(query: AppListQuery) {
   return wait(success(paginate(list, query)));
 }
 
-export async function fetchAppDetail(id: string) {
+export async function fetchAppDetail(id: number) {
   return wait(success(apps.find((item) => item.id === id) || null));
 }
 

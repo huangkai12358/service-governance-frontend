@@ -43,7 +43,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="visible" :title="mode === 'create' ? '新增分组' : mode === 'edit' ? '编辑分组' : '修改组内 API'" width="680px">
+    <el-dialog v-model="visible" :title="mode === 'create' ? '新增分组' : mode === 'edit' ? '编辑分组' : '修改组内 API'" :width="mode === 'bind' ? '980px' : '680px'">
       <el-form :model="form" label-width="100px">
         <template v-if="mode === 'create'">
           <el-form-item label="分组名称"><el-input v-model="form.api_group_name" /></el-form-item>
@@ -55,10 +55,40 @@
           <el-form-item label="分组说明"><el-input v-model="form.api_group_description" type="textarea" /></el-form-item>
         </template>
         <template v-else>
-          <el-form-item label="包含 API">
-            <el-select v-model="form.api_ids" multiple filterable style="width:100%">
-              <el-option v-for="api in currentApis" :key="api.id" :label="`${api.api_name} / ${api.api_path}`" :value="api.id" />
-            </el-select>
+          <el-form-item label="API 列表">
+            <div class="bind-editor">
+              <div class="bind-panel">
+                <el-input v-model="apiKeyword" clearable placeholder="搜索 API 名称或请求路径" />
+                <el-checkbox-group v-model="form.api_ids" class="checkbox-list">
+                  <el-checkbox v-for="api in filteredApis" :key="api.id" :label="api.id">
+                    <span class="option-title">{{ api.api_name }}</span>
+                    <span class="option-subtitle">{{ api.api_path }}</span>
+                  </el-checkbox>
+                </el-checkbox-group>
+              </div>
+              <div class="change-preview">
+                <div class="change-summary">
+                  <span>总计</span>
+                  <el-tag>共 {{ form.api_ids.length }} 个</el-tag>
+                  <el-tag type="success">新增 {{ addedApis.length }} 个</el-tag>
+                  <el-tag type="danger">删除 {{ removedApis.length }} 个</el-tag>
+                </div>
+                <div class="change-section">
+                  <div class="change-section-title success-title">新增 API</div>
+                  <div class="change-tags">
+                    <el-tag v-for="api in addedApis" :key="api.id" type="success">{{ api.api_path }}</el-tag>
+                    <span v-if="!addedApis.length" class="empty-text">无新增 API</span>
+                  </div>
+                </div>
+                <div class="change-section">
+                  <div class="change-section-title danger-title">删除 API</div>
+                  <div class="change-tags">
+                    <el-tag v-for="api in removedApis" :key="api.id" type="danger">{{ api.api_path }}</el-tag>
+                    <span v-if="!removedApis.length" class="empty-text">无删除 API</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </el-form-item>
         </template>
       </el-form>
@@ -82,8 +112,16 @@ const apps = ref<any[]>([]);
 const apis = ref<any[]>([]);
 const visible = ref(false);
 const mode = ref<'create' | 'edit' | 'bind'>('create');
-const form = reactive<any>({ id: '', api_group_name: '', api_group_description: '', app_code: '', api_ids: [] });
+const form = reactive<any>({ id: 0, api_group_name: '', api_group_description: '', app_code: '', api_ids: [] });
+const originalApiIds = ref<number[]>([]);
+const apiKeyword = ref('');
 const currentApis = computed(() => apis.value.filter((item) => item.app_code === form.app_code));
+const filteredApis = computed(() => currentApis.value.filter((api) => {
+  const keyword = apiKeyword.value.trim();
+  return !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword);
+}));
+const addedApis = computed(() => currentApis.value.filter((api) => form.api_ids.includes(api.id) && !originalApiIds.value.includes(api.id)));
+const removedApis = computed(() => currentApis.value.filter((api) => originalApiIds.value.includes(api.id) && !form.api_ids.includes(api.id)));
 const pagination = reactive({ page: 1, pageSize: 10 });
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
@@ -109,12 +147,16 @@ function handlePageSizeChange() {
 
 function openCreate() {
   mode.value = 'create';
-  Object.assign(form, { id: '', api_group_name: '', api_group_description: '', app_code: '', api_ids: [] });
+  originalApiIds.value = [];
+  apiKeyword.value = '';
+  Object.assign(form, { id: 0, api_group_name: '', api_group_description: '', app_code: '', api_ids: [] });
   visible.value = true;
 }
 
 function openEdit(row: any) {
   mode.value = 'edit';
+  originalApiIds.value = [];
+  apiKeyword.value = '';
   Object.assign(form, row);
   visible.value = true;
 }
@@ -122,6 +164,9 @@ function openEdit(row: any) {
 function openBind(row: any) {
   mode.value = 'bind';
   Object.assign(form, row);
+  form.api_ids = [...row.api_ids];
+  originalApiIds.value = [...row.api_ids];
+  apiKeyword.value = '';
   visible.value = true;
 }
 
@@ -139,3 +184,103 @@ async function removeGroup(row: any) {
 
 onMounted(loadData);
 </script>
+
+<style scoped>
+.bind-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  width: 100%;
+}
+
+.bind-panel,
+.change-preview {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--sg-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 420px;
+  margin-top: 12px;
+  overflow: auto;
+}
+
+.checkbox-list :deep(.el-checkbox) {
+  height: auto;
+  align-items: flex-start;
+  margin-right: 0;
+  padding: 6px 0;
+}
+
+.option-title {
+  display: block;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+.option-subtitle {
+  display: block;
+  color: var(--sg-subtext);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.change-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.change-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.change-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.change-section-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.success-title {
+  color: #16a34a;
+}
+
+.danger-title {
+  color: #dc2626;
+}
+
+.change-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  min-height: 88px;
+  max-height: 150px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.empty-text {
+  color: var(--sg-subtext);
+}
+</style>

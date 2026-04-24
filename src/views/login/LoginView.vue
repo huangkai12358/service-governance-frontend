@@ -2,7 +2,7 @@
   <div class="login-shell">
     <div class="login-panel panel-card">
       <div class="intro">
-        <el-tag type="primary" effect="dark">Basic Auth Mock</el-tag>
+        <!-- <el-tag type="primary" effect="dark">Basic Auth Mock</el-tag> -->
         <h1>服务治理管理平台</h1>
         <p>统一管理 API 资产、授权关系、SmartDoc 导入版本与远程调用日志。</p>
       </div>

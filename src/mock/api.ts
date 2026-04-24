@@ -7,7 +7,7 @@ export interface ApiListQuery extends PageQuery {
   app_name?: string;
   api_name?: string;
   api_path?: string;
-  api_version_id?: string;
+  version?: string;
 }
 
 export async function fetchApiList(query: ApiListQuery) {
@@ -16,7 +16,7 @@ export async function fetchApiList(query: ApiListQuery) {
       (!query.app_name || item.app_name.includes(query.app_name)) &&
       (!query.api_name || item.api_name.includes(query.api_name)) &&
       (!query.api_path || item.api_path.includes(query.api_path)) &&
-      (!query.api_version_id || item.api_version_id.includes(query.api_version_id));
+      (!query.version || item.version.includes(query.version));
   });
   return wait(success(paginate(filtered, query)));
 }
@@ -28,7 +28,7 @@ export async function fetchApiOptions() {
   }));
 }
 
-export async function fetchApiDetail(id: string) {
+export async function fetchApiDetail(id: number) {
   const detail = apis.find((item) => item.id === id);
   return wait(success(detail || null));
 }

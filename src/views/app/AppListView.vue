@@ -98,7 +98,7 @@ const detail = ref<any>(null);
 const createFormRef = ref<FormInstance>();
 const editFormRef = ref<FormInstance>();
 const createForm = reactive({ app_code: '', app_name: '', app_description: '' });
-const editForm = reactive<any>({ id: '', app_name: '', app_description: '' });
+const editForm = reactive<any>({ id: 0, app_name: '', app_description: '' });
 const allApis = ref<any[]>([]);
 
 const detailApis = computed(() => allApis.value.filter((item) => item.app_code === detail.value?.app_code));

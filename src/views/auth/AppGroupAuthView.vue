@@ -35,31 +35,53 @@
     </el-card>
 
     <el-dialog v-model="visible" :title="dialogTitle" width="1080px">
+      <div class="callee-filter">
+        <span class="filter-label">被调用应用</span>
+        <el-select
+          v-model="selectedCalleeAppCode"
+          filterable
+          placeholder="请选择被调用应用"
+          style="width: 320px"
+          @change="handleCalleeAppChange"
+        >
+          <el-option
+            v-for="app in appOptions"
+            :key="app.app_code"
+            :label="`${app.app_name}（${app.app_code}）`"
+            :value="app.app_code"
+          />
+        </el-select>
+      </div>
       <div class="auth-editor">
         <div class="editor-column">
           <h3 class="section-title">API 列表</h3>
-          <el-checkbox-group v-model="checkedApiIds">
-            <el-checkbox v-for="item in apiList" :key="item.id" :label="item.id">{{ item.api_path }}</el-checkbox>
+          <el-input v-model="apiKeyword" clearable placeholder="搜索 API 名称或请求路径" />
+          <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
+            <el-checkbox v-for="item in filteredApiList" :key="item.id" :label="item.id">
+              <span class="option-title">{{ item.api_name }}</span>
+              <span class="option-subtitle">{{ item.api_path }}</span>
+            </el-checkbox>
           </el-checkbox-group>
         </div>
         <div class="editor-column">
           <h3 class="section-title">从分组中选择</h3>
           <el-collapse v-model="activeGroups">
-            <el-collapse-item v-for="group in apiGroups" :key="group.id" :name="group.id">
+            <el-collapse-item v-for="group in availableApiGroups" :key="group.id" :name="group.id">
               <template #title>
-                <div class="group-title" @click.stop>
+                <div class="group-title">
                   <el-checkbox
                     :model-value="isGroupChecked(group)"
                     :indeterminate="isGroupIndeterminate(group)"
+                    @click.stop
                     @change="toggleGroup(group, $event)"
-                  >
-                    {{ group.api_group_name }}
-                  </el-checkbox>
+                  />
+                  <span class="group-name">{{ group.api_group_name }}</span>
                 </div>
               </template>
-              <el-checkbox-group v-model="checkedApiIds">
+              <el-checkbox-group v-model="checkedApiIds" class="group-api-list">
                 <el-checkbox v-for="api in getGroupApis(group)" :key="api.id" :label="api.id">
-                  {{ api.api_path }}
+                  <span class="option-title">{{ api.api_name }}</span>
+                  <span class="option-subtitle">{{ api.api_path }}</span>
                 </el-checkbox>
               </el-checkbox-group>
             </el-collapse-item>
@@ -89,13 +111,32 @@ const apiList = ref<any[]>([]);
 const apiGroups = ref<any[]>([]);
 const visible = ref(false);
 const dialogTitle = ref('新增权限');
-const checkedApiIds = ref<string[]>([]);
+const checkedApiIds = ref<number[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
-const activeGroups = ref<string[]>([]);
+const activeGroups = ref<number[]>([]);
+const selectedCalleeAppCode = ref('');
+const apiKeyword = ref('');
 
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
+});
+
+const appOptions = computed(() => {
+  const record = new Map<string, { app_code: string; app_name: string }>();
+  apiList.value.forEach((item) => {
+    if (!record.has(item.app_code)) {
+      record.set(item.app_code, { app_code: item.app_code, app_name: item.app_name });
+    }
+  });
+  return Array.from(record.values());
+});
+
+const availableApiList = computed(() => apiList.value.filter((item) => item.app_code === selectedCalleeAppCode.value));
+const availableApiGroups = computed(() => apiGroups.value.filter((item) => item.app_code === selectedCalleeAppCode.value));
+const filteredApiList = computed(() => {
+  const keyword = apiKeyword.value.trim();
+  return availableApiList.value.filter((api) => !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword));
 });
 
 async function loadData() {
@@ -103,6 +144,7 @@ async function loadData() {
   list.value = data.list;
   apiList.value = data.apis;
   apiGroups.value = data.apiGroups;
+  selectedCalleeAppCode.value ||= data.apis[0]?.app_code || '';
 }
 
 function resetQuery() {
@@ -118,29 +160,37 @@ function handlePageSizeChange() {
 function openDialog(_: any, title: string) {
   dialogTitle.value = title;
   checkedApiIds.value = [];
-  activeGroups.value = apiGroups.value.map((item) => item.id);
+  activeGroups.value = [];
+  apiKeyword.value = '';
+  selectedCalleeAppCode.value = appOptions.value[0]?.app_code || '';
   visible.value = true;
 }
 
 function getGroupApis(group: any) {
-  return apiList.value.filter((item) => group.api_ids.includes(item.id));
+  return availableApiList.value.filter((item) => group.api_ids.includes(item.id));
+}
+
+function handleCalleeAppChange() {
+  checkedApiIds.value = [];
+  activeGroups.value = [];
+  apiKeyword.value = '';
 }
 
 function isGroupChecked(group: any) {
-  return group.api_ids.length > 0 && group.api_ids.every((id: string) => checkedApiIds.value.includes(id));
+  return group.api_ids.length > 0 && group.api_ids.every((id: number) => checkedApiIds.value.includes(id));
 }
 
 function isGroupIndeterminate(group: any) {
-  const checkedCount = group.api_ids.filter((id: string) => checkedApiIds.value.includes(id)).length;
+  const checkedCount = group.api_ids.filter((id: number) => checkedApiIds.value.includes(id)).length;
   return checkedCount > 0 && checkedCount < group.api_ids.length;
 }
 
 function toggleGroup(group: any, checked: string | number | boolean) {
   const next = new Set(checkedApiIds.value);
   if (checked) {
-    group.api_ids.forEach((id: string) => next.add(id));
+    group.api_ids.forEach((id: number) => next.add(id));
   } else {
-    group.api_ids.forEach((id: string) => next.delete(id));
+    group.api_ids.forEach((id: number) => next.delete(id));
   }
   checkedApiIds.value = Array.from(next);
 }
@@ -155,6 +205,23 @@ onMounted(loadData);
 </script>
 
 <style scoped>
+.callee-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--sg-border);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.filter-label {
+  color: var(--sg-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .auth-editor {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -176,6 +243,55 @@ onMounted(loadData);
 .group-title {
   display: flex;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.group-name {
+  flex: 1;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+.api-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+}
+
+.api-checkbox-list :deep(.el-checkbox) {
+  height: auto;
+  align-items: flex-start;
+  margin-right: 0;
+  padding: 6px 0;
+}
+
+.group-api-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0 0 24px;
+}
+
+.group-api-list :deep(.el-checkbox) {
+  height: auto;
+  align-items: flex-start;
+  margin-right: 0;
+}
+
+.option-title {
+  display: block;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+.option-subtitle {
+  display: block;
+  color: var(--sg-subtext);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 .auth-summary {

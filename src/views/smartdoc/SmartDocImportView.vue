@@ -1,4 +1,4 @@
-n<template>
+<template>
   <div class="page-container">
     <div class="page-title">
       <h2>SmartDoc 导入</h2>
@@ -34,9 +34,16 @@ n<template>
           <el-input v-model="draft.remark" type="textarea" />
         </el-form-item>
       </el-form>
+      <div class="diff-summary">
+        <span>差异总计</span>
+        <el-tag>共 {{ diff.additions.length + diff.modifications.length + diff.deletions.length }} 个</el-tag>
+        <el-tag type="success">新增 {{ diff.additions.length }} 个</el-tag>
+        <el-tag type="primary">修改 {{ diff.modifications.length }} 个</el-tag>
+        <el-tag type="danger">删除 {{ diff.deletions.length }} 个</el-tag>
+      </div>
       <el-tabs v-model="tab">
         <el-tab-pane :label="`新增 API（${diff.additions.length}）`" name="add">
-          <div class="diff-grid">
+          <div class="diff-grid diff-scroll">
             <DiffCard v-for="item in diff.additions" :key="item.id" type="added" :title="item.api_name" :subtitle="item.api_path" tag-text="新增API">
               <p>请求方法：{{ item.api_method }}</p>
               <p>描述：{{ item.api_description }}</p>
@@ -44,7 +51,7 @@ n<template>
           </div>
         </el-tab-pane>
         <el-tab-pane :label="`修改 API（${diff.modifications.length}）`" name="modify">
-          <div class="diff-grid">
+          <div class="diff-grid diff-scroll">
             <DiffCard v-for="item in diff.modifications" :key="item.id" type="updated" :title="item.after.api_name" :subtitle="item.after.api_path" tag-text="修改API">
               <el-descriptions :column="1" border>
                 <el-descriptions-item label="变化字段">
@@ -57,7 +64,7 @@ n<template>
           </div>
         </el-tab-pane>
         <el-tab-pane :label="`删除 API（${diff.deletions.length}）`" name="delete">
-          <div class="diff-grid">
+          <div class="diff-grid diff-scroll">
             <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="删除API">
               <p>请求方法：{{ item.api_method }}</p>
               <p>描述：{{ item.api_description }}</p>
@@ -129,6 +136,23 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.diff-scroll {
+  max-height: 620px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.diff-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-weight: 700;
 }
 
 .actions {

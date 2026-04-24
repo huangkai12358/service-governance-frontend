@@ -45,16 +45,23 @@
 
     <el-dialog v-model="rollbackVisible" title="回滚预览" width="min(1100px, calc(100vw - 32px))" class="rollback-dialog">
       <div v-if="detail" class="rollback-grid">
+        <div class="rollback-summary">
+          <span>总计</span>
+          <el-tag>共 {{ rollbackTotal }} 个</el-tag>
+          <el-tag type="success">新增 {{ detail.rollback_preview.additions.length }} 个</el-tag>
+          <el-tag type="primary">修改 {{ detail.rollback_preview.modifications.length }} 个</el-tag>
+          <el-tag type="danger">删除 {{ detail.rollback_preview.deletions.length }} 个</el-tag>
+        </div>
         <div class="rollback-block">
           <h3 class="section-title">新增 API</h3>
-          <el-table :data="detail.rollback_preview.additions" border class="rollback-table">
+          <el-table :data="detail.rollback_preview.additions" border class="rollback-table" height="260">
             <el-table-column prop="api_name" label="API 名称" min-width="180" />
             <el-table-column prop="api_path" label="请求路径" min-width="260" />
           </el-table>
         </div>
         <div class="rollback-block">
           <h3 class="section-title">修改 API</h3>
-          <el-table :data="detail.rollback_preview.modifications" border class="rollback-table">
+          <el-table :data="detail.rollback_preview.modifications" border class="rollback-table" height="300">
             <el-table-column label="API 名称" min-width="140">
               <template #default="{ row }">{{ row.after.api_name }}</template>
             </el-table-column>
@@ -74,7 +81,7 @@
         </div>
         <div class="rollback-block">
           <h3 class="section-title">删除 API</h3>
-          <el-table :data="detail.rollback_preview.deletions" border class="rollback-table">
+          <el-table :data="detail.rollback_preview.deletions" border class="rollback-table" height="260">
             <el-table-column prop="api_name" label="API 名称" min-width="180" />
             <el-table-column prop="api_path" label="请求路径" min-width="260" />
           </el-table>
@@ -105,6 +112,12 @@ const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
 });
+const rollbackTotal = computed(() => {
+  if (!detail.value) return 0;
+  return detail.value.rollback_preview.additions.length +
+    detail.value.rollback_preview.modifications.length +
+    detail.value.rollback_preview.deletions.length;
+});
 
 async function loadData() {
   const { data } = await fetchVersionList(query);
@@ -121,13 +134,13 @@ function handlePageSizeChange() {
   pagination.page = 1;
 }
 
-async function showDetail(id: string) {
+async function showDetail(id: number) {
   const { data } = await fetchVersionDetail(id);
   detail.value = data;
   detailVisible.value = true;
 }
 
-async function showRollback(id: string) {
+async function showRollback(id: number) {
   const { data } = await fetchVersionDetail(id);
   detail.value = data;
   rollbackVisible.value = true;
@@ -151,6 +164,16 @@ onMounted(loadData);
 
 .rollback-block {
   min-width: 0;
+}
+
+.rollback-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-weight: 700;
 }
 
 .rollback-table {
