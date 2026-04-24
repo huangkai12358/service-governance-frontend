@@ -52,40 +52,45 @@
           <el-tag type="primary">修改 {{ detail.rollback_preview.modifications.length }} 个</el-tag>
           <el-tag type="danger">删除 {{ detail.rollback_preview.deletions.length }} 个</el-tag>
         </div>
-        <div class="rollback-block">
-          <h3 class="section-title">新增 API</h3>
-          <el-table :data="detail.rollback_preview.additions" border class="rollback-table" height="260">
-            <el-table-column prop="api_name" label="API 名称" min-width="180" />
-            <el-table-column prop="api_path" label="请求路径" min-width="260" />
-          </el-table>
-        </div>
-        <div class="rollback-block">
-          <h3 class="section-title">修改 API</h3>
-          <el-table :data="detail.rollback_preview.modifications" border class="rollback-table" height="300">
-            <el-table-column label="API 名称" min-width="140">
-              <template #default="{ row }">{{ row.after.api_name }}</template>
-            </el-table-column>
-            <el-table-column label="请求路径" min-width="180">
-              <template #default="{ row }">{{ row.after.api_path }}</template>
-            </el-table-column>
-            <el-table-column label="变化字段" min-width="120">
-              <template #default="{ row }">{{ row.changed_fields.join('、') }}</template>
-            </el-table-column>
-            <el-table-column label="变更前" min-width="220">
-              <template #default="{ row }">{{ row.before.api_name }} / {{ row.before.api_method }} / {{ row.before.api_description }}</template>
-            </el-table-column>
-            <el-table-column label="变更后" min-width="220">
-              <template #default="{ row }">{{ row.after.api_name }} / {{ row.after.api_method }} / {{ row.after.api_description }}</template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <div class="rollback-block">
-          <h3 class="section-title">删除 API</h3>
-          <el-table :data="detail.rollback_preview.deletions" border class="rollback-table" height="260">
-            <el-table-column prop="api_name" label="API 名称" min-width="180" />
-            <el-table-column prop="api_path" label="请求路径" min-width="260" />
-          </el-table>
-        </div>
+        <el-tabs v-model="rollbackTab">
+          <el-tab-pane :label="`新增 API（${detail.rollback_preview.additions.length}）`" name="add">
+            <div class="rollback-block">
+              <el-table :data="detail.rollback_preview.additions" border class="rollback-table" height="420">
+                <el-table-column prop="api_name" label="API 名称" min-width="180" />
+                <el-table-column prop="api_path" label="请求路径" min-width="260" />
+              </el-table>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane :label="`修改 API（${detail.rollback_preview.modifications.length}）`" name="modify">
+            <div class="rollback-block">
+              <el-table :data="detail.rollback_preview.modifications" border class="rollback-table" height="420">
+                <el-table-column label="API 名称" min-width="140">
+                  <template #default="{ row }">{{ row.after.api_name }}</template>
+                </el-table-column>
+                <el-table-column label="请求路径" min-width="180">
+                  <template #default="{ row }">{{ row.after.api_path }}</template>
+                </el-table-column>
+                <el-table-column label="变化字段" min-width="120">
+                  <template #default="{ row }">{{ row.changed_fields.join('、') }}</template>
+                </el-table-column>
+                <el-table-column label="变更前" min-width="220">
+                  <template #default="{ row }">{{ row.before.api_name }} / {{ row.before.api_method }} / {{ row.before.api_description }}</template>
+                </el-table-column>
+                <el-table-column label="变更后" min-width="220">
+                  <template #default="{ row }">{{ row.after.api_name }} / {{ row.after.api_method }} / {{ row.after.api_description }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane :label="`删除 API（${detail.rollback_preview.deletions.length}）`" name="delete">
+            <div class="rollback-block">
+              <el-table :data="detail.rollback_preview.deletions" border class="rollback-table" height="420">
+                <el-table-column prop="api_name" label="API 名称" min-width="180" />
+                <el-table-column prop="api_path" label="请求路径" min-width="260" />
+              </el-table>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
       <template #footer>
         <el-button @click="rollbackVisible = false">取消</el-button>
@@ -106,6 +111,7 @@ const list = ref<any[]>([]);
 const detail = ref<any>(null);
 const detailVisible = ref(false);
 const rollbackVisible = ref(false);
+const rollbackTab = ref('add');
 const pagination = reactive({ page: 1, pageSize: 10 });
 
 const pagedList = computed(() => {
@@ -143,6 +149,7 @@ async function showDetail(id: number) {
 async function showRollback(id: number) {
   const { data } = await fetchVersionDetail(id);
   detail.value = data;
+  rollbackTab.value = 'add';
   rollbackVisible.value = true;
 }
 
