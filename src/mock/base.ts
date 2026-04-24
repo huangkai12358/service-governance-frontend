@@ -305,20 +305,41 @@ export const versionDetails: VersionDetail[] = versionHistories.map((version, in
   };
 });
 
-export const singleAppAuthorizations: SingleAppAuthorization[] = Array.from({ length: 200 }, (_, index) => {
-  const caller = apps[index % apps.length];
-  const callee = apps[(index * 7 + 3) % apps.length];
-  const calleeApis = apis.filter((api) => api.app_code === callee.app_code).slice(index % 20, (index % 20) + 8);
-  return {
-    id: index + 1,
+export const singleAppAuthorizations: SingleAppAuthorization[] = [];
+// 构建更具连贯性的复杂拓扑图
+// 策略：让前 6 个种子应用（如网关、订单、用户等）成为高密度的中心节点（Hubs）
+// 普通应用大部分都与中心节点交互，小部分普通应用之间互相交互
+for (let i = 0; i < 400; i++) {
+  // 60% 的概率让调用方是核心节点，40% 的概率是普通节点
+  const isCoreCaller = (i % 10) < 6;
+  const callerIndex = isCoreCaller
+    ? (i % 6) // 在 6 个核心应用中轮询
+    : 6 + ((i * 13) % (apps.length - 6)); // 在普通应用中分散选择
+  const caller = apps[callerIndex];
+
+  // 70% 的概率让被调用方是核心节点
+  const isCoreCallee = (i % 10) < 7;
+  const calleeIndex = isCoreCallee
+    ? ((i * 17) % 6)
+    : 6 + ((i * 23) % (apps.length - 6));
+  const callee = apps[calleeIndex];
+
+  // 避免自己调用自己
+  if (caller.app_code === callee.app_code) continue;
+
+  const calleeApis = apis.filter((api) => api.app_code === callee.app_code).slice(i % 5, (i % 5) + 3);
+  if (calleeApis.length === 0) continue;
+
+  singleAppAuthorizations.push({
+    id: singleAppAuthorizations.length + 1,
     caller_app_code: caller.app_code,
     caller_app_name: caller.app_name,
     callee_app_code: callee.app_code,
     callee_app_name: callee.app_name,
     api_paths: calleeApis.map((api) => api.api_path),
     api_group_ids: [...new Set(calleeApis.flatMap((api) => api.api_group_ids))]
-  };
-});
+  });
+}
 
 export const appGroupAuthorizations: AppGroupAuthorization[] = appGroups.map((group, index) => ({
   id: index + 1,
