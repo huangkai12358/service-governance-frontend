@@ -25,6 +25,65 @@
       <!-- ECharts 渲染容器 -->
       <div ref="chartRef" class="topology-chart" />
     </el-card>
+
+    <!-- 拓扑图详情抽屉：点击节点或连线后右侧滑出 -->
+    <el-drawer
+      v-model="drawerVisible"
+      :title="drawerTitle"
+      size="480px"
+      destroy-on-close
+      direction="rtl"
+    >
+      <!-- 节点详情：展示该应用作为调用方/被调用方的授权关系 -->
+      <template v-if="drawerType === 'node' && drawerNodeData">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="应用编码">{{ drawerNodeData.nodeCode }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">
+            作为调用方
+            <el-tag type="info" size="small">
+              {{ drawerNodeData.callerList.length }} 个服务 / {{ drawerNodeData.callerApiTotal }} 个 API
+            </el-tag>
+          </div>
+          <el-table :data="drawerNodeData.callerList" size="small" border>
+            <el-table-column prop="appName" label="被调用服务" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="apiCount" label="授权 API 数" width="110" align="center" />
+          </el-table>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">
+            作为被调用方
+            <el-tag type="info" size="small">
+              {{ drawerNodeData.calleeList.length }} 个服务 / {{ drawerNodeData.calleeApiTotal }} 个 API
+            </el-tag>
+          </div>
+          <el-table :data="drawerNodeData.calleeList" size="small" border>
+            <el-table-column prop="appName" label="调用方服务" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="apiCount" label="授权 API 数" width="110" align="center" />
+          </el-table>
+        </div>
+      </template>
+
+      <!-- 连线详情：展示该授权关系下的所有 API -->
+      <template v-if="drawerType === 'edge' && drawerEdgeData">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="调用方">{{ drawerEdgeData.sourceName }}</el-descriptions-item>
+          <el-descriptions-item label="被调用方">{{ drawerEdgeData.targetName }}</el-descriptions-item>
+          <el-descriptions-item label="授权 API 数量">{{ drawerEdgeData.apiDetails.length }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">授权 API 列表</div>
+          <el-table :data="drawerEdgeData.apiDetails" size="small" border>
+            <el-table-column prop="name" label="API 名称" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="path" label="API 路径" min-width="200" show-overflow-tooltip />
+          </el-table>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
@@ -49,6 +108,13 @@ let chartInstance: echarts.ECharts | null = null;
 // 原始全量数据与搜索条件
 const rawTopologyData = ref<TopologyData | null>(null);
 const searchQuery = ref('');
+
+// 抽屉相关状态
+const drawerVisible = ref(false);
+const drawerType = ref<'node' | 'edge'>('node');
+const drawerTitle = ref('');
+const drawerNodeData = ref<any>(null);
+const drawerEdgeData = ref<any>(null);
 
 /**
  * 基于 HSL 色环为每个节点生成独立颜色
@@ -76,43 +142,23 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
   return {
     tooltip: {
       trigger: 'item',
-      // 允许鼠标进入 tooltip 内容区（方便查看长 API 列表）
-      enterable: true,
       confine: true,
-      extraCssText: 'max-width: 420px; max-height: 320px; overflow-y: auto; white-space: normal;',
-      /**
-       * Tooltip 内容格式化：
-       * - 节点：显示应用名、编码、作为调用方/被调用方的授权详情
-       * - 连线：显示调用方→被调用方、授权 API 数量、具体 API 路径列表
-       */
+      // 悬浮时仅展示简要信息，点击后详情通过抽屉展示
       formatter: (params: any) => {
         if (params.dataType === 'node') {
           const nodeCode = params.name;
-          // 统计该节点作为调用方和被调用方的连线数
           const asCallerCount = topology.links.filter((l) => l.source === nodeCode).length;
           const asCalleeCount = topology.links.filter((l) => l.target === nodeCode).length;
-          const asCallerApiCount = topology.links.filter((l) => l.source === nodeCode).reduce((sum, l) => sum + l.value, 0);
-          const asCalleeApiCount = topology.links.filter((l) => l.target === nodeCode).reduce((sum, l) => sum + l.value, 0);
-          return `<div style="font-weight:600;font-size:14px;margin-bottom:6px">${params.data.displayName || nodeCode}</div>`
-            + `<div style="color:#64748b;font-size:12px;margin-bottom:2px">应用编码：<span style="color:#374151">${nodeCode}</span></div>`
-            + `<div style="color:#64748b;font-size:12px;margin-bottom:2px">作为调用方：调用 <strong style="color:#1d4ed8">${asCallerCount}</strong> 个应用，共 <strong style="color:#1d4ed8">${asCallerApiCount}</strong> 个 API</div>`
-            + `<div style="color:#64748b;font-size:12px">作为被调用方：被 <strong style="color:#0f766e">${asCalleeCount}</strong> 个应用调用，共 <strong style="color:#0f766e">${asCalleeApiCount}</strong> 个 API</div>`;
+          return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${params.data.displayName || nodeCode}</div>`
+            + `<div style="color:#64748b;font-size:12px">点击节点查看授权详情</div>`
+            + `<div style="color:#64748b;font-size:12px">作为调用方：${asCallerCount} 个服务 | 作为被调用方：${asCalleeCount} 个服务</div>`;
         }
         if (params.dataType === 'edge') {
           const linkData = params.data;
-          // 查找节点的显示名称
           const sourceLabel = topology.nodes.find((n) => n.name === linkData.source)?.label || linkData.source;
           const targetLabel = topology.nodes.find((n) => n.name === linkData.target)?.label || linkData.target;
-          // 构建 API 详情列表的 HTML
-          const apiDetails = linkData.apiDetails || [];
-          const apiListHtml = apiDetails.length > 0
-            ? apiDetails.map((api: any) => `<div style="font-size:12px;color:#374151;padding:2px 0;border-bottom:1px solid #f1f5f9">📄 ${api.name} <span style="color:#94a3b8">(${api.path})</span></div>`).join('')
-            : '<div style="color:#94a3b8;font-size:12px">无具体 API 信息</div>';
-
-          return `<div style="font-weight:600;margin-bottom:6px">${sourceLabel} → ${targetLabel}</div>`
-            + `<div style="color:#64748b;font-size:12px;margin-bottom:8px">授权 API 数量：<strong style="color:#1d4ed8">${apiDetails.length}</strong></div>`
-            + `<div style="font-size:12px;font-weight:600;margin-bottom:4px;color:#475569">授权 API 列表：</div>`
-            + `<div style="max-height:200px;overflow-y:auto">${apiListHtml}</div>`;
+          return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${sourceLabel} → ${targetLabel}</div>`
+            + `<div style="color:#64748b;font-size:12px">点击连线查看授权 API 列表（共 ${linkData.apiDetails?.length || 0} 个）</div>`;
         }
         return '';
       }
@@ -167,7 +213,7 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
           target: link.target,
           value: link.value,
           apiPaths: link.apiPaths,
-          apiDetails: link.apiDetails, // 传递完整的 API 详情（包含名称和路径）给 Tooltip 使用
+          apiDetails: link.apiDetails,
           lineStyle: {
             // 连线粗细根据授权 API 数量映射（最小 0.5px，最大 5px）
             width: 0.5 + (link.value / maxWeight) * 4.5,
@@ -212,7 +258,7 @@ function renderChart() {
     // 2. 找到包含匹配 API 的连线，或者两端有匹配节点的连线
     const matchedLinks = displayData.links.filter((link) => {
       // 匹配 API 名称或路径
-      const apiMatched = link.apiDetails?.some((api: any) => 
+      const apiMatched = link.apiDetails?.some((api: any) =>
         api.name.toLowerCase().includes(query) || api.path.toLowerCase().includes(query)
       );
       const nodeMatched = matchedNodes.has(link.source) || matchedNodes.has(link.target);
@@ -266,41 +312,80 @@ async function loadTopology() {
 }
 
 /**
+ * 构建节点抽屉数据：汇总该应用作为调用方和被调用方的所有授权关系
+ */
+function buildNodeDrawerData(nodeCode: string, displayName: string, topology: TopologyData) {
+  // 该应用作为调用方：找出所有 source === nodeCode 的连线
+  const callerLinks = topology.links.filter((l) => l.source === nodeCode);
+  const callerList = callerLinks.map((l) => {
+    const targetNode = topology.nodes.find((n) => n.name === l.target);
+    return {
+      appName: targetNode ? `${targetNode.label}（${l.target}）` : l.target,
+      apiCount: l.value
+    };
+  });
+  const callerApiTotal = callerLinks.reduce((sum, l) => sum + l.value, 0);
+
+  // 该应用作为被调用方：找出所有 target === nodeCode 的连线
+  const calleeLinks = topology.links.filter((l) => l.target === nodeCode);
+  const calleeList = calleeLinks.map((l) => {
+    const sourceNode = topology.nodes.find((n) => n.name === l.source);
+    return {
+      appName: sourceNode ? `${sourceNode.label}（${l.source}）` : l.source,
+      apiCount: l.value
+    };
+  });
+  const calleeApiTotal = calleeLinks.reduce((sum, l) => sum + l.value, 0);
+
+  return {
+    nodeCode,
+    displayName,
+    callerList,
+    callerApiTotal,
+    calleeList,
+    calleeApiTotal
+  };
+}
+
+/**
  * 初始化 ECharts 实例
  */
 function initChart() {
   if (!chartRef.value) return;
   chartInstance = echarts.init(chartRef.value);
 
-  // 实现点击固定 Tooltip 功能
+  // 点击节点或连线时打开右侧抽屉展示详情
   chartInstance.on('click', (params) => {
-    if (params.dataType === 'node' || params.dataType === 'edge') {
-      // 当点击节点或连线时，关闭鼠标移入移出的触发，强制永久显示当前内容
-      chartInstance?.setOption({
-        tooltip: {
-          triggerOn: 'none',
-          alwaysShowContent: true
-        }
-      });
-      // 强制触发 Tooltip 显示在当前点击的元素上（通过鼠标坐标触发，避免 edge 的 dataIndex 被误认为 node）
-      chartInstance?.dispatchAction({
-        type: 'showTip',
-        x: params.event?.offsetX,
-        y: params.event?.offsetY
-      });
+    if (!rawTopologyData.value) return;
+
+    if (params.dataType === 'node') {
+      const nodeCode = params.name;
+      const displayName = (params.data as any)?.displayName || nodeCode;
+      drawerType.value = 'node';
+      drawerTitle.value = displayName;
+      drawerNodeData.value = buildNodeDrawerData(nodeCode, displayName, rawTopologyData.value);
+      drawerEdgeData.value = null;
+      drawerVisible.value = true;
+    } else if (params.dataType === 'edge') {
+      const linkData = params.data as any;
+      const sourceLabel = rawTopologyData.value.nodes.find((n) => n.name === linkData.source)?.label || linkData.source;
+      const targetLabel = rawTopologyData.value.nodes.find((n) => n.name === linkData.target)?.label || linkData.target;
+      drawerType.value = 'edge';
+      drawerTitle.value = `${sourceLabel} → ${targetLabel}`;
+      drawerEdgeData.value = {
+        sourceName: `${sourceLabel}（${linkData.source}）`,
+        targetName: `${targetLabel}（${linkData.target}）`,
+        apiDetails: linkData.apiDetails || []
+      };
+      drawerNodeData.value = null;
+      drawerVisible.value = true;
     }
   });
 
-  // 监听画布背景（空白处）的点击事件，取消固定状态
+  // 监听画布背景（空白处）的点击事件，关闭抽屉
   chartInstance.getZr().on('click', (event) => {
     if (!event.target) {
-      chartInstance?.setOption({
-        tooltip: {
-          triggerOn: 'mousemove|click',
-          alwaysShowContent: false
-        }
-      });
-      chartInstance?.dispatchAction({ type: 'hideTip' });
+      drawerVisible.value = false;
     }
   });
 
@@ -374,5 +459,20 @@ onBeforeUnmount(() => {
 .topology-chart {
   width: 100%;
   height: calc(100vh - 140px); /* 给定绝对高度，避免 el-card 内部 flex 失效导致高度为 0 */
+}
+
+/* 抽屉内分区样式 */
+.drawer-section {
+  margin-top: 16px;
+}
+
+.drawer-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sg-text);
 }
 </style>
