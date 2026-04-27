@@ -5,6 +5,9 @@
       <p>按调用方应用编码和被调用方应用编码管理单应用 API 授权关系。</p>
     </div>
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+            <el-form-item>
+        <el-button type="primary" @click="exportToExcel">导出为Excel</el-button>
+      </el-form-item>
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
       <el-form-item label="被调用方应用编码"><el-input v-model="query.callee_app_code" clearable /></el-form-item>
     </PageSearch>
@@ -180,6 +183,27 @@ function toggleGroup(group: any, checked: string | number | boolean) {
     group.api_ids.forEach((id: number) => next.delete(id));
   }
   checkedApiIds.value = Array.from(next);
+}
+
+async function exportToExcel() {
+  const headers = ['调用方应用编码', '被调用方应用编码', '授权的API列表'];
+  const rows = list.value.map(item => [
+    item.caller_app_code,
+    item.callee_app_code,
+    item.api_paths.join(', ')
+  ]);
+
+  let csvContent = 'data:text/csv;charset=utf-8,' +
+    headers.join(',') + '\n' +
+    rows.map(e => e.join(',')).join('\n');
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', 'authorization_export.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 async function submitEdit() {
