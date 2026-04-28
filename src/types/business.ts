@@ -105,7 +105,7 @@ export interface SmartDocDiffResult {
   unchanged_count: number;
   additions: VersionDiffItem[];
   modifications: ModifiedApiDiff[];
-  deletions: VersionDiffItem[];
+  deprecations: VersionDiffItem[];
 }
 
 export interface VersionHistoryItem {
@@ -128,11 +128,6 @@ export interface VersionDetail {
     api_path: string;
     api_method: HttpMethod;
   }>;
-  rollback_preview: {
-    additions: VersionDiffItem[];
-    modifications: ModifiedApiDiff[];
-    deletions: VersionDiffItem[];
-  };  
 }
 
 export interface SingleAppAuthorization {
@@ -260,4 +255,3 @@ export interface RemoteCallLogItem {
   decision_reason: string;
   log_time: string;
 }
-

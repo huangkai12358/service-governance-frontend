@@ -39,11 +39,7 @@
         <el-tag>无变化 {{ diff.unchanged_count }} 个</el-tag>
         <el-tag type="success">新增 {{ diff.additions.length }} 个</el-tag>
         <el-tag type="primary">修改 {{ diff.modifications.length }} 个</el-tag>
-<<<<<<< HEAD
-        <el-tag type="danger">废弃 {{ diff.deletions.length }} 个</el-tag>
-=======
         <el-tag type="warning">废弃 {{ diff.deprecations.length }} 个</el-tag>
->>>>>>> parent of 1e36f61 (Revert "去掉回滚功能；去掉APP分组；新增API反向授权；SmartDoc导入后对新增API直接跳转到授权；删除API -> 废弃API")
       </div>
       <el-tabs v-model="tab">
         <el-tab-pane :label="`新增 API（${diff.additions.length}）`" name="add">
