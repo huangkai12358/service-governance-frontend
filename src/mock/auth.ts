@@ -4,10 +4,41 @@ import { getLatestImportedAdditions } from './smartdoc';
 import type {
   AuthorizationDelta,
   AuthorizationEditorData,
+  SingleAppAuthorization,
+  SingleAppAuthorizationDialogData,
+  SingleAppAuthorizationEditorPayload,
   ReverseAuthorizedTargetDetail,
   ReverseAuthEditorData,
   ReverseAuthListItem
 } from '@/types/business';
+
+function buildAuthorizationEditorData(calleeAppCode: string, checkedApiPaths: string[] = []): AuthorizationEditorData {
+  const calleeApis = apis.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
+  const calleeGroups = apiGroups.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
+
+  return {
+    apis: calleeApis.map((item) => ({ id: item.id, api_name: item.api_name, api_path: item.api_path, app_code: item.app_code })),
+    api_groups: calleeGroups.map((item) => ({ id: item.id, api_group_name: item.api_group_name, app_code: item.app_code, api_ids: item.api_ids })),
+    checked_api_ids: calleeApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id),
+    checked_group_ids: calleeGroups
+      .filter((group) => group.api_ids.length > 0 && group.api_ids.every((id) => calleeApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id).includes(id)))
+      .map((group) => group.id)
+  };
+}
+
+function buildAppOptions() {
+  return apps
+    .filter((item) => item.is_deleted === 0)
+    .map((item) => ({ app_code: item.app_code, app_name: item.app_name }));
+}
+
+function getApiPathsByIds(apiIds: number[]) {
+  return apis.filter((item) => apiIds.includes(item.id)).map((item) => item.api_path);
+}
+
+function getApiGroupIdsByIds(apiIds: number[]) {
+  return [...new Set(apis.filter((item) => apiIds.includes(item.id)).flatMap((item) => item.api_group_ids))];
+}
 
 export async function fetchSingleAppAuthList(query: { caller_app_code?: string; callee_app_code?: string }) {
   const list = singleAppAuthorizations.filter((item) => {
