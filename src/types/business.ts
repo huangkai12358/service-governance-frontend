@@ -145,6 +145,11 @@ export interface SingleAppAuthorization {
   api_group_ids: number[];
 }
 
+export interface AuthorizationAppOption {
+  app_code: string;
+  app_name: string;
+}
+
 export interface AppGroupAuthorization {
   id: number;
   app_group_name: string;
@@ -167,6 +172,18 @@ export interface AuthorizationEditorData {
   }>;
   checked_api_ids: number[];
   checked_group_ids: number[];
+}
+
+export interface SingleAppAuthorizationEditorPayload {
+  caller_app_code: string;
+  callee_app_code: string;
+  checked_api_ids: number[];
+}
+
+export interface SingleAppAuthorizationDialogData {
+  current?: SingleAppAuthorization;
+  app_options: AuthorizationAppOption[];
+  data: AuthorizationEditorData;
 }
 
 export interface AuthorizationDelta {

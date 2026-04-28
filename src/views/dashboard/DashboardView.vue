@@ -302,7 +302,7 @@ watch(searchQuery, () => {
  */
 async function loadTopology() {
   if (!chartInstance) return;
-  chartInstance.showLoading({ text: '拓扑数据加载中...' });
+  chartInstance.showLoading({ text: '数据加载中...' });
 
   const { data: topologyData } = await fetchTopologyData();
   rawTopologyData.value = topologyData;
