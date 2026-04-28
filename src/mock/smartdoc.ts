@@ -40,7 +40,7 @@ function createDiffApi(id: number, prefix: string): VersionDiffItem {
 }
 
 const additions = Array.from({ length: 18 }, (_, index) => createDiffApi(300001 + index, 'new'));
-const deletions = Array.from({ length: 14 }, (_, index) => createDiffApi(390001 + index, 'legacy'));
+const deprecations = Array.from({ length: 14 }, (_, index) => createDiffApi(390001 + index, 'legacy'));
 const modifications = Array.from({ length: 16 }, (_, index) => {
   const after = createDiffApi(310001 + index, 'changed');
   return {
@@ -70,13 +70,27 @@ const smartDocDiff: SmartDocDiffResult = {
     ...item,
     changed_fields: [...item.changed_fields]
   })),
-  deletions
+  deprecations,
+  unchanged_count: 62
 };
+
+let latestImportedAdditions: VersionDiffItem[] = [];
 
 export async function analyzeSmartDoc() {
   return wait(success(smartDocDiff), 1000);
 }
 
 export async function confirmSmartDocImport() {
-  return wait(success(true, 'SmartDoc 导入成功'));
+  latestImportedAdditions = smartDocDiff.additions.map((item) => ({ ...item }));
+  return wait(success({
+    unchanged_count: smartDocDiff.unchanged_count,
+    addition_count: smartDocDiff.additions.length,
+    modification_count: smartDocDiff.modifications.length,
+    deprecation_count: smartDocDiff.deprecations.length,
+    additions: smartDocDiff.additions
+  }, 'SmartDoc 导入成功'));
+}
+
+export function getLatestImportedAdditions() {
+  return latestImportedAdditions.map((item) => ({ ...item }));
 }

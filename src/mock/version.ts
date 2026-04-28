@@ -23,7 +23,3 @@ export async function fetchVersionList(query: VersionListQuery) {
 export async function fetchVersionDetail(id: number) {
   return wait(success(versionDetails.find((item) => item.version.id === id) || null));
 }
-
-export async function rollbackVersion() {
-  return wait(success(true, '回滚成功'));
-}

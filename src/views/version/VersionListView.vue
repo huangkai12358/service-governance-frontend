@@ -2,8 +2,9 @@
   <div class="page-container">
     <div class="page-title">
       <h2>历史版本管理</h2>
-      <p>按应用编码、应用名称和版本号查询历史版本，并支持回滚预览。</p>
+      <p>按应用编码、应用名称和版本号查询历史版本，可查看版本详情。若需回退，请重新导入目标 SmartDoc 文档生成新版本。</p>
     </div>
+
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
       <el-form-item label="应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
       <el-form-item label="应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
@@ -13,13 +14,13 @@
     <el-card class="panel-card" shadow="never">
       <el-table :data="pagedList" border>
         <el-table-column prop="app_code" label="应用编码" width="160" />
-        <el-table-column prop="app_name" label="应用名称" width="140" />
-        <el-table-column prop="app_description" label="应用说明" min-width="220" />
+        <el-table-column prop="app_name" label="应用名称" width="160" />
+        <el-table-column prop="app_description" label="应用说明" min-width="240" />
         <el-table-column prop="version" label="版本号" width="140" />
-        <el-table-column label="操作" width="160">
+        <el-table-column prop="create_time" label="导入时间" width="180" />
+        <el-table-column label="操作" width="100">
           <template #default="{ row }">
             <el-button link type="primary" @click="showDetail(row.id)">详情</el-button>
-            <el-button link type="danger" @click="showRollback(row.id)">回滚</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -35,88 +36,42 @@
       </div>
     </el-card>
 
-    <el-drawer v-model="detailVisible" title="版本详情" size="680px">
-      <el-table v-if="detail" :data="detail.apis" border>
-        <el-table-column prop="api_name" label="API 名称" min-width="160" />
-        <el-table-column prop="api_path" label="请求路径" min-width="240" />
-        <el-table-column prop="api_method" label="请求方法" width="110" />
-      </el-table>
-    </el-drawer>
+    <el-drawer v-model="detailVisible" title="版本详情" size="760px">
+      <template v-if="detail">
+        <el-descriptions :column="2" border class="detail-summary">
+          <el-descriptions-item label="应用编码">{{ detail.version.app_code }}</el-descriptions-item>
+          <el-descriptions-item label="应用名称">{{ detail.version.app_name }}</el-descriptions-item>
+          <el-descriptions-item label="版本号">{{ detail.version.version }}</el-descriptions-item>
+          <el-descriptions-item label="导入时间">{{ detail.version.create_time }}</el-descriptions-item>
+          <el-descriptions-item label="导入文件" :span="2">{{ detail.version.file_name }}</el-descriptions-item>
+          <el-descriptions-item label="导入说明" :span="2">{{ detail.version.remark }}</el-descriptions-item>
+        </el-descriptions>
 
-    <el-dialog v-model="rollbackVisible" title="回滚预览" width="min(1100px, calc(100vw - 32px))" class="rollback-dialog">
-      <div v-if="detail" class="rollback-grid">
-        <div class="rollback-summary">
-          <span>总计</span>
-          <el-tag>共 {{ rollbackTotal }} 个</el-tag>
-          <el-tag type="success">新增 {{ detail.rollback_preview.additions.length }} 个</el-tag>
-          <el-tag type="primary">修改 {{ detail.rollback_preview.modifications.length }} 个</el-tag>
-          <el-tag type="danger">删除 {{ detail.rollback_preview.deletions.length }} 个</el-tag>
-        </div>
-        <div class="rollback-block">
-          <h3 class="section-title">新增 API</h3>
-          <el-table :data="detail.rollback_preview.additions" border class="rollback-table" height="260">
-            <el-table-column prop="api_name" label="API 名称" min-width="180" />
-            <el-table-column prop="api_path" label="请求路径" min-width="260" />
-          </el-table>
-        </div>
-        <div class="rollback-block">
-          <h3 class="section-title">修改 API</h3>
-          <el-table :data="detail.rollback_preview.modifications" border class="rollback-table" height="300">
-            <el-table-column label="API 名称" min-width="140">
-              <template #default="{ row }">{{ row.after.api_name }}</template>
-            </el-table-column>
-            <el-table-column label="请求路径" min-width="180">
-              <template #default="{ row }">{{ row.after.api_path }}</template>
-            </el-table-column>
-            <el-table-column label="变化字段" min-width="120">
-              <template #default="{ row }">{{ row.changed_fields.join('、') }}</template>
-            </el-table-column>
-            <el-table-column label="变更前" min-width="220">
-              <template #default="{ row }">{{ row.before.api_name }} / {{ row.before.api_method }} / {{ row.before.api_description }}</template>
-            </el-table-column>
-            <el-table-column label="变更后" min-width="220">
-              <template #default="{ row }">{{ row.after.api_name }} / {{ row.after.api_method }} / {{ row.after.api_description }}</template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <div class="rollback-block">
-          <h3 class="section-title">删除 API</h3>
-          <el-table :data="detail.rollback_preview.deletions" border class="rollback-table" height="260">
-            <el-table-column prop="api_name" label="API 名称" min-width="180" />
-            <el-table-column prop="api_path" label="请求路径" min-width="260" />
-          </el-table>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="rollbackVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmRollback">确认</el-button>
+        <div class="section-title">包含的 API</div>
+        <el-table :data="detail.apis" border>
+          <el-table-column prop="api_name" label="API 名称" min-width="180" />
+          <el-table-column prop="api_path" label="请求路径" min-width="280" show-overflow-tooltip />
+          <el-table-column prop="api_method" label="请求方法" width="110" />
+        </el-table>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { fetchVersionDetail, fetchVersionList, rollbackVersion } from '@/mock/version';
+import { fetchVersionDetail, fetchVersionList } from '@/mock/version';
 
 const query = reactive({ app_code: '', app_name: '', version: '' });
 const list = ref<any[]>([]);
 const detail = ref<any>(null);
 const detailVisible = ref(false);
-const rollbackVisible = ref(false);
 const pagination = reactive({ page: 1, pageSize: 10 });
 
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
-});
-const rollbackTotal = computed(() => {
-  if (!detail.value) return 0;
-  return detail.value.rollback_preview.additions.length +
-    detail.value.rollback_preview.modifications.length +
-    detail.value.rollback_preview.deletions.length;
 });
 
 async function loadData() {
@@ -140,56 +95,18 @@ async function showDetail(id: number) {
   detailVisible.value = true;
 }
 
-async function showRollback(id: number) {
-  const { data } = await fetchVersionDetail(id);
-  detail.value = data;
-  rollbackVisible.value = true;
-}
-
-async function confirmRollback() {
-  const { message } = await rollbackVersion();
-  ElMessage.success(message);
-  rollbackVisible.value = false;
-}
-
 onMounted(loadData);
 </script>
 
 <style scoped>
-.rollback-grid {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
+.detail-summary {
+  margin-bottom: 20px;
 }
 
-.rollback-block {
-  min-width: 0;
-}
-
-.rollback-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #f1f5f9;
+.section-title {
+  margin: 0 0 12px;
+  color: var(--sg-text);
+  font-size: 15px;
   font-weight: 700;
-}
-
-.rollback-table {
-  width: 100%;
-}
-
-.rollback-dialog :deep(.el-dialog) {
-  max-width: calc(100vw - 32px);
-}
-
-.rollback-dialog :deep(.el-dialog__body) {
-  overflow-x: hidden;
-}
-
-.rollback-dialog :deep(.rollback-table .cell) {
-  white-space: normal;
-  word-break: break-word;
 }
 </style>

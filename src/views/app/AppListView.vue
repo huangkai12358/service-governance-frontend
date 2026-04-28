@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <div class="page-title">
       <h2>APP 管理</h2>
@@ -66,18 +66,38 @@
     </el-dialog>
 
     <el-drawer v-model="detailVisible" title="APP 详情" size="760px">
+      <template #header>
+        <div class="drawer-header">
+          <span>APP 详情</span>
+          <el-button type="primary" @click="exportDetailToExcel" :disabled="!detail">导出为Excel</el-button>
+        </div>
+      </template>
+
       <el-descriptions v-if="detail" :column="1" border>
         <el-descriptions-item label="应用编码">{{ detail.app_code }}</el-descriptions-item>
         <el-descriptions-item label="应用名称">{{ detail.app_name }}</el-descriptions-item>
         <el-descriptions-item label="应用说明">{{ detail.app_description || '-' }}</el-descriptions-item>
         <el-descriptions-item label="当前版本号">{{ detail.current_version }}</el-descriptions-item>
       </el-descriptions>
-      <h3 class="section-title" style="margin-top: 24px">包含的所有 API</h3>
-      <el-table :data="detailApis" border>
+
+      <div class="section-head">
+        <h3 class="section-title">包含的所有 API</h3>
+      </div>
+      <el-table :data="pagedDetailApis" border>
         <el-table-column prop="api_name" label="API 名称" min-width="160" />
         <el-table-column prop="api_path" label="请求路径" min-width="240" />
         <el-table-column prop="api_method" label="请求方法" width="120" />
       </el-table>
+      <div class="drawer-pagination">
+        <el-pagination
+          v-model:current-page="detailQuery.page"
+          v-model:page-size="detailQuery.pageSize"
+          :page-sizes="[5, 10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          :total="detailApis.length"
+          @size-change="handleDetailPageSizeChange"
+        />
+      </div>
     </el-drawer>
   </div>
 </template>
@@ -90,6 +110,7 @@ import { deleteApp, fetchAppList, saveApp } from '@/mock/app';
 import { apis } from '@/mock/base';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '' });
+const detailQuery = reactive({ page: 1, pageSize: 10 });
 const tableData = reactive({ list: [] as any[], total: 0 });
 const detailVisible = ref(false);
 const createVisible = ref(false);
@@ -101,7 +122,14 @@ const createForm = reactive({ app_code: '', app_name: '', app_description: '' })
 const editForm = reactive<any>({ id: 0, app_name: '', app_description: '' });
 const allApis = ref<any[]>([]);
 
-const detailApis = computed(() => allApis.value.filter((item) => item.app_code === detail.value?.app_code));
+const detailApis = computed(() =>
+  allApis.value.filter((item) => item.app_code === detail.value?.app_code && item.is_deleted === 0)
+);
+
+const pagedDetailApis = computed(() => {
+  const start = (detailQuery.page - 1) * detailQuery.pageSize;
+  return detailApis.value.slice(start, start + detailQuery.pageSize);
+});
 
 const createRules: FormRules = {
   app_code: [{ required: true, message: '请输入应用编码', trigger: 'blur' }],
@@ -128,6 +156,10 @@ function handlePageSizeChange() {
   loadData();
 }
 
+function handleDetailPageSizeChange() {
+  detailQuery.page = 1;
+}
+
 function openCreate() {
   Object.assign(createForm, { app_code: '', app_name: '', app_description: '' });
   createVisible.value = true;
@@ -140,7 +172,39 @@ function openEdit(row: any) {
 
 function showDetail(row: any) {
   detail.value = row;
+  Object.assign(detailQuery, { page: 1, pageSize: 10 });
   detailVisible.value = true;
+}
+
+function exportDetailToExcel() {
+  if (!detail.value) return;
+
+  const headers = ['应用编码', '应用名称', '应用说明', '当前版本号', 'API名称', '请求路径', '请求方法'];
+  const rows = detailApis.value.map((item) => [
+    detail.value.app_code,
+    detail.value.app_name,
+    detail.value.app_description || '',
+    detail.value.current_version,
+    item.api_name,
+    item.api_path,
+    item.api_method
+  ]);
+
+  const escapeCell = (value: unknown) => {
+    const text = String(value ?? '').replace(/"/g, '""');
+    return `"${text}"`;
+  };
+
+  const csvContent = [headers.map(escapeCell).join(','), ...rows.map((row) => row.map(escapeCell).join(','))].join('\n');
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${detail.value.app_code}-detail-export.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 async function submitCreate() {
@@ -171,3 +235,30 @@ onMounted(async () => {
   allApis.value = apis;
 });
 </script>
+
+<style scoped>
+.drawer-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.section-title {
+  margin: 0 0 12px;
+}
+
+.drawer-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+</style>

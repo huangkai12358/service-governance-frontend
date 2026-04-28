@@ -122,10 +122,15 @@ function logout() {
   margin-bottom: 6px;
 }
 
-.menu :deep(.is-active) {
+.menu :deep(.el-menu-item.is-active) {
   background: var(--sg-primary-light);
   color: var(--sg-primary);
   font-weight: 600;
+}
+
+.menu :deep(.el-sub-menu .el-menu-item) {
+  font-size: 13px;
+  padding-left: 52px !important;
 }
 
 .main {

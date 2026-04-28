@@ -17,7 +17,13 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/DashboardView.vue'),
-        meta: { title: '首页' }
+        meta: { title: '首页概览' }
+      },
+      {
+        path: 'dashboard/topology',
+        name: 'ApiAuthTopology',
+        component: () => import('@/views/dashboard/ApiAuthTopologyView.vue'),
+        meta: { title: 'API授权拓扑图' }
       },
       {
         path: 'api/list',
@@ -41,7 +47,7 @@ const routes = [
         path: 'app/list',
         name: 'AppList',
         component: () => import('@/views/app/AppListView.vue'),
-        meta: { title: 'APP 管理' }
+        meta: { title: 'APP 列表' }
       },
       {
         path: 'groups/api',
@@ -50,22 +56,16 @@ const routes = [
         meta: { title: 'API 分组' }
       },
       {
-        path: 'groups/app',
-        name: 'AppGroupList',
-        component: () => import('@/views/groups/AppGroupListView.vue'),
-        meta: { title: 'APP 分组' }
-      },
-      {
         path: 'auth/app',
         name: 'SingleAppAuth',
         component: () => import('@/views/auth/SingleAppAuthView.vue'),
         meta: { title: '单个应用授权' }
       },
       {
-        path: 'auth/app-group',
-        name: 'AppGroupAuth',
-        component: () => import('@/views/auth/AppGroupAuthView.vue'),
-        meta: { title: '应用组授权' }
+        path: 'auth/api-reverse',
+        name: 'ApiReverseAuth',
+        component: () => import('@/views/auth/ApiReverseAuthView.vue'),
+        meta: { title: 'API 反向授权' }
       },
       {
         path: 'logs/auth-config',
@@ -102,7 +102,7 @@ router.beforeEach((to) => {
   if (to.path === '/login' && authStore.isLoggedIn) {
     return '/dashboard';
   }
-  document.title = `${to.meta.title ?? '服务治理管理平台'} - 服务治理管理平台`;
+  document.title = `${to.meta.title ?? '服务治理平台'} - 服务治理平台`;
 });
 
 export default router;
