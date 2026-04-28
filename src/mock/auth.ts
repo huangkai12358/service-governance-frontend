@@ -12,6 +12,16 @@ import type {
   ReverseAuthListItem
 } from '@/types/business';
 
+interface ReverseAuthorizationSavePayload {
+  selected_apis: Array<{
+    id: number;
+    api_path: string;
+    app_code: string;
+  }>;
+  checked_app_codes: string[];
+  original_app_codes: string[];
+}
+
 function buildAuthorizationEditorData(calleeAppCode: string, checkedApiPaths: string[] = []): AuthorizationEditorData {
   const calleeApis = apis.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
   const calleeGroups = apiGroups.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
@@ -153,7 +163,20 @@ function buildCallerApiPathMap() {
 
 export async function fetchReverseAuthApiList(query: { app_code?: string; app_name?: string; api_name?: string; api_path?: string }) {
   const callerApiPathMap = buildCallerApiPathMap();
-  const list: ReverseAuthListItem[] = apis
+  const importedAdditions = getLatestImportedAdditions()
+    .filter((item) => !apis.some((api) => api.id === item.id))
+    .map((item) => ({
+      id: item.id,
+      app_code: item.app_code,
+      app_name: item.app_name,
+      api_name: item.api_name,
+      api_path: item.api_path,
+      api_method: item.api_method,
+      is_deleted: 0 as const
+    }));
+  const sourceApis = [...importedAdditions, ...apis];
+
+  const list: ReverseAuthListItem[] = sourceApis
     .filter((item) => item.is_deleted === 0)
     .filter((item) => {
       return (!query.app_code || item.app_code.includes(query.app_code)) &&
@@ -215,7 +238,22 @@ export async function fetchReverseAuthEditor(apiIds: number[]) {
 }
 
 export async function fetchReverseAuthorizedTargetDetail(apiId: number) {
-  const api = apis.find((item) => item.id === apiId && item.is_deleted === 0);
+  const importedAdditions = getLatestImportedAdditions()
+    .filter((item) => item.id === apiId)
+    .map((item) => ({
+      id: item.id,
+      app_code: item.app_code,
+      app_name: item.app_name,
+      api_name: item.api_name,
+      api_path: item.api_path,
+      api_method: item.api_method,
+      is_deleted: 0 as const
+    }));
+  const sourceApis = [
+    ...importedAdditions,
+    ...apis
+  ];
+  const api = sourceApis.find((item) => item.id === apiId && item.is_deleted === 0);
   const authApps = !api ? [] : Array.from(
     new Map(
       singleAppAuthorizations
@@ -239,6 +277,68 @@ export async function fetchReverseAuthorizedTargetDetail(apiId: number) {
   return wait(success(data));
 }
 
-export async function saveReverseAuthorization() {
+export async function saveReverseAuthorization(payload: ReverseAuthorizationSavePayload) {
+  if (!payload.selected_apis.length) {
+    return wait(success(false, '请至少选择一个 API'));
+  }
+
+  if (!payload.checked_app_codes.length && !payload.original_app_codes.length) {
+    return wait(success(false, '请至少选择一个应用'));
+  }
+
+  const calleeAppCode = payload.selected_apis[0].app_code;
+  const calleeApp = apps.find((item) => item.app_code === calleeAppCode);
+  const selectedPaths = payload.selected_apis.map((item) => item.api_path);
+  const unionAppCodes = [...new Set([...payload.checked_app_codes, ...payload.original_app_codes])];
+
+  unionAppCodes.forEach((callerAppCode) => {
+    const existedIndex = singleAppAuthorizations.findIndex((item) =>
+      item.caller_app_code === callerAppCode && item.callee_app_code === calleeAppCode
+    );
+    const shouldKeep = payload.checked_app_codes.includes(callerAppCode);
+
+    if (shouldKeep) {
+      if (existedIndex >= 0) {
+        const record = singleAppAuthorizations[existedIndex];
+        record.api_paths = [...new Set([...record.api_paths, ...selectedPaths])];
+        record.api_group_ids = [...new Set([
+          ...record.api_group_ids,
+          ...apiGroups
+            .filter((group) => group.app_code === calleeAppCode)
+            .filter((group) => group.api_paths.some((path) => selectedPaths.includes(path)))
+            .map((group) => group.id)
+        ])];
+      } else {
+        const callerApp = apps.find((item) => item.app_code === callerAppCode);
+        singleAppAuthorizations.unshift({
+          id: Math.max(0, ...singleAppAuthorizations.map((item) => item.id)) + 1,
+          caller_app_code: callerAppCode,
+          caller_app_name: callerApp?.app_name || callerAppCode,
+          callee_app_code: calleeAppCode,
+          callee_app_name: calleeApp?.app_name || calleeAppCode,
+          api_paths: [...selectedPaths],
+          api_group_ids: apiGroups
+            .filter((group) => group.app_code === calleeAppCode)
+            .filter((group) => group.api_paths.some((path) => selectedPaths.includes(path)))
+            .map((group) => group.id)
+        });
+      }
+      return;
+    }
+
+    if (existedIndex >= 0) {
+      const record = singleAppAuthorizations[existedIndex];
+      record.api_paths = record.api_paths.filter((path) => !selectedPaths.includes(path));
+      record.api_group_ids = record.api_group_ids.filter((groupId) => {
+        const group = apiGroups.find((item) => item.id === groupId);
+        return group?.api_paths.some((path) => record.api_paths.includes(path));
+      });
+
+      if (!record.api_paths.length) {
+        singleAppAuthorizations.splice(existedIndex, 1);
+      }
+    }
+  });
+
   return wait(success(true, '反向授权保存成功'));
 }
