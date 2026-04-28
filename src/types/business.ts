@@ -105,7 +105,7 @@ export interface SmartDocDiffResult {
   unchanged_count: number;
   additions: VersionDiffItem[];
   modifications: ModifiedApiDiff[];
-  deprecations: VersionDiffItem[];
+  deletions: VersionDiffItem[];
 }
 
 export interface VersionHistoryItem {
@@ -128,6 +128,11 @@ export interface VersionDetail {
     api_path: string;
     api_method: HttpMethod;
   }>;
+  rollback_preview: {
+    additions: VersionDiffItem[];
+    modifications: ModifiedApiDiff[];
+    deletions: VersionDiffItem[];
+  };  
 }
 
 export interface SingleAppAuthorization {
@@ -138,6 +143,18 @@ export interface SingleAppAuthorization {
   callee_app_name: string;
   api_paths: string[];
   api_group_ids: number[];
+}
+
+export interface AuthorizationAppOption {
+  app_code: string;
+  app_name: string;
+}
+
+export interface AppGroupAuthorization {
+  id: number;
+  app_group_name: string;
+  app_codes: string[];
+  app_names: string[];
 }
 
 export interface AuthorizationEditorData {
