@@ -2,7 +2,7 @@
   <div class="page-container">
     <div class="page-title">
       <h2>SmartDoc 导入</h2>
-      <p>上传文档后进行解析，并按 path 对比新增 API、修改 API、废弃 API。</p>
+      <p>上传文档后进行解析，并按 path 对比新增 API、修改 API、删除 API。</p>
     </div>
     <el-card class="panel-card" shadow="never">
       <el-steps :active="step" finish-status="success">
@@ -36,10 +36,10 @@
       </el-form>
       <div class="diff-summary">
         <span>差异总计</span>
-        <el-tag>无变化 {{ diff.unchanged_count }} 个</el-tag>
+        <el-tag>共 {{ diff.additions.length + diff.modifications.length + diff.deletions.length }} 个</el-tag>
         <el-tag type="success">新增 {{ diff.additions.length }} 个</el-tag>
         <el-tag type="primary">修改 {{ diff.modifications.length }} 个</el-tag>
-        <el-tag type="warning">废弃 {{ diff.deprecations.length }} 个</el-tag>
+        <el-tag type="danger">删除 {{ diff.deletions.length }} 个</el-tag>
       </div>
       <el-tabs v-model="tab">
         <el-tab-pane :label="`新增 API（${diff.additions.length}）`" name="add">
@@ -63,63 +63,36 @@
             </DiffCard>
           </div>
         </el-tab-pane>
-        <el-tab-pane :label="`废弃 API（${diff.deprecations.length}）`" name="deprecate">
+        <el-tab-pane :label="`删除 API（${diff.deletions.length}）`" name="delete">
           <div class="diff-grid diff-scroll">
-            <DiffCard v-for="item in diff.deprecations" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="废弃API">
+            <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="删除API">
               <p>请求方法：{{ item.api_method }}</p>
               <p>描述：{{ item.api_description }}</p>
             </DiffCard>
           </div>
         </el-tab-pane>
       </el-tabs>
-      <div class="actions actions-sticky">
-        <div class="actions-tip">
-          已完成差异分析，可直接确认导入当前解析结果
-        </div>
-        <div class="actions-buttons">
-          <el-button @click="cancelImport">取消</el-button>
-          <el-button type="primary" @click="confirmImport">确认导入</el-button>
-        </div>
+      <div class="actions">
+        <el-button @click="cancelImport">取消</el-button>
+        <el-button type="primary" @click="confirmImport">确认导入</el-button>
       </div>
     </el-card>
-
-    <el-dialog v-model="resultVisible" title="导入成功" width="560px">
-      <div v-if="importResult" class="result-content">
-        <div class="result-summary">
-          <el-tag>无变化 {{ importResult.unchanged_count }} 个</el-tag>
-          <el-tag type="success">新增 {{ importResult.addition_count }} 个</el-tag>
-          <el-tag type="primary">修改 {{ importResult.modification_count }} 个</el-tag>
-          <el-tag type="warning">废弃 {{ importResult.deprecation_count }} 个</el-tag>
-        </div>
-        <p class="result-tip">本次导入已生成新版本。对于新增 API，可继续前往权限管理完成授权。</p>
-      </div>
-      <template #footer>
-        <el-button @click="resultVisible = false">关闭</el-button>
-        <el-button type="primary" :disabled="!importResult?.addition_count" @click="goAuthorize">
-          去授权
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import DiffCard from '@/components/DiffCard.vue';
 import { analyzeSmartDoc, confirmSmartDocImport } from '@/mock/smartdoc';
 import { fetchApiOptions } from '@/mock/api';
 
-const router = useRouter();
 const step = ref(0);
 const diff = ref<any>(null);
 const tab = ref('add');
 const draft = reactive({ app_code: '', version: '', remark: '' });
 const appOptions = ref<any[]>([]);
-const resultVisible = ref(false);
-const importResult = ref<any>(null);
 
 async function analyze() {
   step.value = 1;
@@ -134,10 +107,8 @@ async function analyze() {
 }
 
 async function confirmImport() {
-  const { data, message } = await confirmSmartDocImport();
-  importResult.value = data;
-  resultVisible.value = true;
-  cancelImport();
+  const { message } = await confirmSmartDocImport();
+  step.value = 3;
   ElMessage.success(message);
 }
 
@@ -145,18 +116,6 @@ function cancelImport() {
   diff.value = null;
   step.value = 0;
   Object.assign(draft, { app_code: '', version: '', remark: '' });
-}
-
-function goAuthorize() {
-  const ids = importResult.value?.additions?.map((item: any) => item.id).join(',');
-  router.push({
-    path: '/auth/api-reverse',
-    query: {
-      app_code: importResult.value?.additions?.[0]?.app_code || '',
-      api_ids: ids
-    }
-  });
-  resultVisible.value = false;
 }
 
 onMounted(async () => {
@@ -198,48 +157,8 @@ onMounted(async () => {
 
 .actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.actions-sticky {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  padding: 14px 16px 0;
-  margin: 20px -4px 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 22%, #ffffff 100%);
-}
-
-.actions-tip {
-  color: var(--sg-subtext);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.actions-buttons {
-  display: flex;
-  align-items: center;
+  justify-content: flex-end;
   gap: 12px;
-}
-
-.result-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.result-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.result-tip {
-  margin: 0;
-  color: var(--sg-subtext);
-  line-height: 1.8;
+  margin-top: 20px;
 }
 </style>

@@ -1,4 +1,4 @@
-import { apiGroups, apis, apps } from './base';
+import { apiGroups, apis, appGroups, apps } from './base';
 import { success, wait } from '@/utils/mock';
 
 export async function fetchApiGroupList(query: { api_group_name?: string; app_code?: string }) {
@@ -9,10 +9,25 @@ export async function fetchApiGroupList(query: { api_group_name?: string; app_co
   return wait(success({ list, apps, apis }));
 }
 
+export async function fetchAppGroupList(query: { app_group_name?: string }) {
+  const list = appGroups.filter((item) => item.is_deleted === 0).filter((item) => {
+    return !query.app_group_name || item.app_group_name.includes(query.app_group_name);
+  });
+  return wait(success({ list, apps }));
+}
+
 export async function saveApiGroup() {
   return wait(success(true, '保存成功'));
 }
 
+export async function saveAppGroup() {
+  return wait(success(true, '保存成功'));
+}
+
 export async function deleteApiGroup() {
+  return wait(success(true, '删除成功'));
+}
+
+export async function deleteAppGroup() {
   return wait(success(true, '删除成功'));
 }
