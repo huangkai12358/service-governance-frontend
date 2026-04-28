@@ -16,6 +16,7 @@ export interface MenuItem {
 
 export const menus: MenuItem[] = [
   { title: '首页', path: '/dashboard', icon: Grid },
+  { title: 'API授权拓扑图', path: '/dashboard/topology', icon: Connection },
   {
     title: 'API 管理',
     path: '/api',

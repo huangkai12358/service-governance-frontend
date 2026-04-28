@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <div class="page-title">
       <h2>单个应用授权</h2>
@@ -186,24 +186,38 @@ function toggleGroup(group: any, checked: string | number | boolean) {
 }
 
 async function exportToExcel() {
-  const headers = ['调用方应用编码', '被调用方应用编码', '授权的API列表'];
-  const rows = list.value.map(item => [
-    item.caller_app_code,
-    item.callee_app_code,
-    item.api_paths.join(', ')
-  ]);
+  const headers = ['调用方应用编码', '被调用方应用编码', '授权API'];
+  const rows = list.value.flatMap((item) => {
+    if (!item.api_paths.length) {
+      return [[item.caller_app_code, item.callee_app_code, '']];
+    }
 
-  let csvContent = 'data:text/csv;charset=utf-8,' +
-    headers.join(',') + '\n' +
-    rows.map(e => e.join(',')).join('\n');
+    return item.api_paths.map((apiPath) => [
+      item.caller_app_code,
+      item.callee_app_code,
+      apiPath
+    ]);
+  });
 
-  const encodedUri = encodeURI(csvContent);
+  const escapeCell = (value: unknown) => {
+    const text = String(value ?? '').replace(/"/g, '""');
+    return `"${text}"`;
+  };
+
+  const csvContent = [
+    headers.map(escapeCell).join(','),
+    ...rows.map((row) => row.map(escapeCell).join(','))
+  ].join('\n');
+
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', 'authorization_export.csv');
+  link.href = url;
+  link.download = 'authorization_export.csv';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 async function submitEdit() {
@@ -336,3 +350,5 @@ onMounted(loadData);
   color: #d97706;
 }
 </style>
+
+

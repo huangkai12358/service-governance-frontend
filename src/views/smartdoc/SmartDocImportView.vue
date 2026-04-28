@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="page-container">
     <div class="page-title">
       <h2>SmartDoc 导入</h2>
-      <p>上传文档后进行解析，并按 path 对比新增 API、修改 API、删除 API。</p>
+      <p>上传文档后进行解析，并按 path 对比新增 API、修改 API、废弃 API。</p>
     </div>
     <el-card class="panel-card" shadow="never">
       <el-steps :active="step" finish-status="success">
@@ -39,7 +39,7 @@
         <el-tag>共 {{ diff.additions.length + diff.modifications.length + diff.deletions.length }} 个</el-tag>
         <el-tag type="success">新增 {{ diff.additions.length }} 个</el-tag>
         <el-tag type="primary">修改 {{ diff.modifications.length }} 个</el-tag>
-        <el-tag type="danger">删除 {{ diff.deletions.length }} 个</el-tag>
+        <el-tag type="danger">废弃 {{ diff.deletions.length }} 个</el-tag>
       </div>
       <el-tabs v-model="tab">
         <el-tab-pane :label="`新增 API（${diff.additions.length}）`" name="add">
@@ -63,9 +63,9 @@
             </DiffCard>
           </div>
         </el-tab-pane>
-        <el-tab-pane :label="`删除 API（${diff.deletions.length}）`" name="delete">
+        <el-tab-pane :label="`废弃 API（${diff.deletions.length}）`" name="delete">
           <div class="diff-grid diff-scroll">
-            <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="删除API">
+            <DiffCard v-for="item in diff.deletions" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="废弃API">
               <p>请求方法：{{ item.api_method }}</p>
               <p>描述：{{ item.api_description }}</p>
             </DiffCard>
@@ -162,3 +162,4 @@ onMounted(async () => {
   margin-top: 20px;
 }
 </style>
+
