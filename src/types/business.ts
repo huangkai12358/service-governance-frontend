@@ -1,6 +1,6 @@
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+﻿export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export type DecisionResult = 'SUCCESS' | 'FAIL' | 'BYPASS';
-export type ChangeType = '新增API' | '修改API' | '删除API';
+export type ChangeType = '新增API' | '修改API' | '废弃API';
 
 export interface UserInfo {
   username: string;
@@ -219,3 +219,4 @@ export interface RemoteCallLogItem {
   decision_reason: string;
   log_time: string;
 }
+
