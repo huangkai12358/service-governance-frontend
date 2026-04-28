@@ -50,22 +50,16 @@ const routes = [
         meta: { title: 'API 分组' }
       },
       {
-        path: 'groups/app',
-        name: 'AppGroupList',
-        component: () => import('@/views/groups/AppGroupListView.vue'),
-        meta: { title: 'APP 分组' }
-      },
-      {
         path: 'auth/app',
         name: 'SingleAppAuth',
         component: () => import('@/views/auth/SingleAppAuthView.vue'),
         meta: { title: '单个应用授权' }
       },
       {
-        path: 'auth/app-group',
-        name: 'AppGroupAuth',
-        component: () => import('@/views/auth/AppGroupAuthView.vue'),
-        meta: { title: '应用组授权' }
+        path: 'auth/api-reverse',
+        name: 'ApiReverseAuth',
+        component: () => import('@/views/auth/ApiReverseAuthView.vue'),
+        meta: { title: 'API 反向授权' }
       },
       {
         path: 'logs/auth-config',

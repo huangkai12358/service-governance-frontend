@@ -1,6 +1,6 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export type DecisionResult = 'SUCCESS' | 'FAIL' | 'BYPASS';
-export type ChangeType = '新增API' | '修改API' | '删除API';
+export type ChangeType = '新增API' | '修改API' | '废弃API';
 
 export interface UserInfo {
   username: string;
@@ -11,7 +11,6 @@ export interface OverviewStats {
   api_total: number;
   app_total: number;
   api_group_total: number;
-  app_group_total: number;
   auth_relation_total: number;
   smartdoc_import_total: number;
   today_call_total: number;
@@ -103,9 +102,10 @@ export interface SmartDocImportDraft {
 
 export interface SmartDocDiffResult {
   draft: SmartDocImportDraft;
+  unchanged_count: number;
   additions: VersionDiffItem[];
   modifications: ModifiedApiDiff[];
-  deletions: VersionDiffItem[];
+  deprecations: VersionDiffItem[];
 }
 
 export interface VersionHistoryItem {
@@ -128,11 +128,6 @@ export interface VersionDetail {
     api_path: string;
     api_method: HttpMethod;
   }>;
-  rollback_preview: {
-    additions: VersionDiffItem[];
-    modifications: ModifiedApiDiff[];
-    deletions: VersionDiffItem[];
-  };
 }
 
 export interface SingleAppAuthorization {
@@ -143,13 +138,6 @@ export interface SingleAppAuthorization {
   callee_app_name: string;
   api_paths: string[];
   api_group_ids: number[];
-}
-
-export interface AppGroupAuthorization {
-  id: number;
-  app_group_name: string;
-  app_codes: string[];
-  app_names: string[];
 }
 
 export interface AuthorizationEditorData {
@@ -172,6 +160,47 @@ export interface AuthorizationEditorData {
 export interface AuthorizationDelta {
   added_api_paths: string[];
   revoked_api_paths: string[];
+}
+
+export interface ReverseAuthListItem {
+  api_id: number;
+  app_code: string;
+  app_name: string;
+  api_name: string;
+  api_path: string;
+  api_method: HttpMethod;
+  authorized_app_count: number;
+}
+
+export interface ReverseAuthEditorData {
+  selected_apis: Array<{
+    id: number;
+    api_name: string;
+    api_path: string;
+    api_method: HttpMethod;
+    app_code: string;
+    app_name: string;
+  }>;
+  apps: Array<{
+    app_code: string;
+    app_name: string;
+  }>;
+  checked_app_codes: string[];
+}
+
+export interface ReverseAuthorizedTargetDetail {
+  api: {
+    id: number;
+    app_code: string;
+    app_name: string;
+    api_name: string;
+    api_path: string;
+    api_method: HttpMethod;
+  };
+  apps: Array<{
+    app_code: string;
+    app_name: string;
+  }>;
 }
 
 export interface AuthConfigLogItem {
