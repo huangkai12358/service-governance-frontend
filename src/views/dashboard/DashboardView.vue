@@ -150,7 +150,7 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
           const asCallerCount = topology.links.filter((l) => l.source === nodeCode).length;
           const asCalleeCount = topology.links.filter((l) => l.target === nodeCode).length;
           return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${params.data.displayName || nodeCode}</div>`
-            + `<div style="color:#64748b;font-size:12px">点击节点查看授权详情</div>`
+            + `<div style="color:#64748b;font-size:12px">应用编码：${nodeCode}</div>`
             + `<div style="color:#64748b;font-size:12px">作为调用方：${asCallerCount} 个服务 | 作为被调用方：${asCalleeCount} 个服务</div>`;
         }
         if (params.dataType === 'edge') {
@@ -158,7 +158,7 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
           const sourceLabel = topology.nodes.find((n) => n.name === linkData.source)?.label || linkData.source;
           const targetLabel = topology.nodes.find((n) => n.name === linkData.target)?.label || linkData.target;
           return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${sourceLabel} → ${targetLabel}</div>`
-            + `<div style="color:#64748b;font-size:12px">点击连线查看授权 API 列表（共 ${linkData.apiDetails?.length || 0} 个）</div>`;
+            + `<div style="color:#64748b;font-size:12px">授权 API 数量：${linkData.apiDetails?.length || 0} 个</div>`;
         }
         return '';
       }
@@ -302,7 +302,7 @@ watch(searchQuery, () => {
  */
 async function loadTopology() {
   if (!chartInstance) return;
-  chartInstance.showLoading({ text: '拓扑数据加载中...' });
+  chartInstance.showLoading({ text: '数据加载中...' });
 
   const { data: topologyData } = await fetchTopologyData();
   rawTopologyData.value = topologyData;

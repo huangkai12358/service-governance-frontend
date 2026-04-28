@@ -157,6 +157,18 @@ export interface AuthorizationEditorData {
   checked_group_ids: number[];
 }
 
+export interface SingleAppAuthorizationEditorPayload {
+  caller_app_code: string;
+  callee_app_code: string;
+  checked_api_ids: number[];
+}
+
+export interface SingleAppAuthorizationDialogData {
+  current?: SingleAppAuthorization;
+  app_options: AuthorizationAppOption[];
+  data: AuthorizationEditorData;
+}
+
 export interface AuthorizationDelta {
   added_api_paths: string[];
   revoked_api_paths: string[];
