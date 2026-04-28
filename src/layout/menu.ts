@@ -37,10 +37,7 @@ export const menus: MenuItem[] = [
     title: '分组管理',
     path: '/groups',
     icon: Share,
-    children: [
-      { title: 'API 分组', path: '/groups/api' },
-      { title: 'APP 分组', path: '/groups/app' }
-    ]
+    children: [{ title: 'API 分组', path: '/groups/api' }]
   },
   {
     title: '权限管理',
@@ -48,7 +45,7 @@ export const menus: MenuItem[] = [
     icon: Connection,
     children: [
       { title: '单个应用授权', path: '/auth/app' },
-      { title: '应用组授权', path: '/auth/app-group' }
+      { title: 'API 反向授权', path: '/auth/api-reverse' }
     ]
   },
   {

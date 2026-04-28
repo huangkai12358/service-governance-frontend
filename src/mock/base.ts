@@ -2,7 +2,6 @@ import type {
   ActivityRecord,
   ApiGroupItem,
   ApiItem,
-  AppGroupAuthorization,
   AppGroupItem,
   AppItem,
   AuthConfigLogItem,
@@ -277,31 +276,9 @@ export const versionHistories: VersionHistoryItem[] = apps.map((app, index) => (
 
 export const versionDetails: VersionDetail[] = versionHistories.map((version, index) => {
   const appApis = apis.filter((api) => api.app_code === version.app_code);
-  const modificationSources = appApis.slice(20, 36);
   return {
     version,
-    apis: appApis.map(({ id, api_name, api_path, api_method }) => ({ id, api_name, api_path, api_method })),
-    rollback_preview: {
-      additions: appApis.slice(0, 18).map(toVersionDiff),
-      modifications: modificationSources.map((api, modIndex) => ({
-        id: index * 100 + modIndex + 1,
-        before: {
-          ...toVersionDiff(api),
-          id: LEGACY_API_ID_BASE + api.id + modIndex,
-          api_name: `${api.api_name}旧版`,
-          api_method: modIndex % 3 === 0 ? 'GET' : api.api_method,
-          api_description: '旧版接口说明，字段覆盖较少，缺少鉴权范围和异常码描述'
-        },
-        after: toVersionDiff(api),
-        changed_fields: modIndex % 3 === 0 ? ['api_name', 'api_method', 'api_description'] : ['api_name', 'api_description']
-      })),
-      deletions: appApis.slice(40, 56).map((api) => ({
-        ...toVersionDiff(api),
-        id: LEGACY_API_ID_BASE + api.id,
-        api_name: `${api.api_name}旧接口`,
-        api_path: `${api.api_path}-legacy`
-      }))
-    }
+    apis: appApis.map(({ id, api_name, api_path, api_method }) => ({ id, api_name, api_path, api_method }))
   };
 });
 
@@ -340,13 +317,6 @@ for (let i = 0; i < 400; i++) {
     api_group_ids: [...new Set(calleeApis.flatMap((api) => api.api_group_ids))]
   });
 }
-
-export const appGroupAuthorizations: AppGroupAuthorization[] = appGroups.map((group, index) => ({
-  id: index + 1,
-  app_group_name: group.app_group_name,
-  app_codes: group.app_codes,
-  app_names: group.app_names
-}));
 
 export const authConfigLogs: AuthConfigLogItem[] = Array.from({ length: 500 }, (_, index) => {
   const api = apis[(index * 13) % apis.length];
@@ -399,7 +369,7 @@ export const dashboardActivities: {
   ],
   auths: [
     { id: 3, title: '授权关系批量生成', description: `当前单应用授权关系 ${singleAppAuthorizations.length} 条`, time: authConfigLogs[0]?.log_time || '2026-04-22 10:00:00' },
-    { id: 4, title: '应用组授权同步', description: `当前应用组授权 ${appGroupAuthorizations.length} 条`, time: '2026-04-21 17:20:00' }
+    { id: 4, title: 'API 分组权限同步', description: `当前 API 分组总量 ${apiGroups.length} 条`, time: '2026-04-21 17:20:00' }
   ],
   calls: [
     { id: 5, title: '远程调用日志生成', description: `当前远程调用日志 ${remoteCallLogs.length} 条`, time: remoteCallLogs[0]?.log_time || '2026-04-22 10:15:00' },
