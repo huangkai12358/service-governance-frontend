@@ -54,23 +54,128 @@
 
     <el-dialog v-model="visible" title="API 反向授权" width="1180px">
       <div v-if="editorData" class="reverse-editor">
-        <el-alert
-          v-if="isImportedEditor && pendingFlowVisible"
-          class="dialog-pending-alert"
-          type="success"
-          :closable="false"
-          show-icon
-        >
-          <template #title>
-            完成 {{ completedImportedCount }} 个 API 的授权，剩余 {{ pendingImportedIds.length }} 个 API 待处理
-          </template>
-        </el-alert>
+        <div v-if="isImportedEditor" class="imported-grid">
+          <div class="imported-flow">
+            <el-steps :active="importedStep" finish-status="success" align-center>
+              <el-step title="选择服务" />
+              <el-step title="API授权" />
+              <el-step title="确认" />
+              <el-step title="完成" />
+            </el-steps>
 
-        <div class="editor-grid">
+            <el-alert class="dialog-pending-alert" type="info" :closable="false" show-icon>
+              <template #title>仅处理本次新增 API</template>
+            </el-alert>
+
+            <el-card class="step-card" shadow="never">
+              <template v-if="importedStep === 0">
+                <div class="step-layout">
+                  <el-descriptions :column="1" border>
+                    <el-descriptions-item label="被调用方服务">{{ importedCalleeAppName }}</el-descriptions-item>
+                    <el-descriptions-item label="SmartDoc 版本">{{ importedVersion }}</el-descriptions-item>
+                    <el-descriptions-item label="本次新增 API 数量">{{ importedInitialIds.length }}</el-descriptions-item>
+                  </el-descriptions>
+
+                  <div class="step-section">
+                    <div class="section-head">
+                      <h3 class="section-title">选择调用方服务</h3>
+                      <span class="section-meta">已处理 {{ importedAssignments.length }} 个服务</span>
+                    </div>
+                    <el-select v-model="importedCallerAppCode" placeholder="请选择调用方服务" filterable clearable>
+                      <el-option
+                        v-for="item in importedCallerOptions"
+                        :key="item.app_code"
+                        :label="`${item.app_name}（${item.app_code}）`"
+                        :value="item.app_code"
+                        :disabled="processedImportedAppCodes.includes(item.app_code)"
+                      >
+                        <div class="service-option">
+                          <span>{{ item.app_name }}（{{ item.app_code }}）</span>
+                          <el-tag v-if="processedImportedAppCodes.includes(item.app_code)" size="small" type="success">已处理</el-tag>
+                        </div>
+                      </el-option>
+                    </el-select>
+                    <div class="change-tags">
+                      <el-tag v-for="item in importedAssignments" :key="item.app_code" type="success">
+                        {{ item.app_name }}（{{ item.app_code }}）/ {{ item.api_ids.length }} 个 API
+                      </el-tag>
+                      <el-empty v-if="!importedAssignments.length" description="暂无已处理服务" :image-size="72" />
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else-if="importedStep === 1">
+                <div class="step-layout">
+                  <div class="section-head">
+                    <h3 class="section-title">当前调用方服务</h3>
+                    <span class="section-meta">{{ currentImportedCallerName }}</span>
+                  </div>
+                  <el-transfer
+                    v-model="importedTransferKeys"
+                    filterable
+                    :titles="['未授权新增 API', `本次授权 API（${importedTransferKeys.length}）`]"
+                    :props="{ key: 'key', label: 'label' }"
+                    :data="importedTransferData"
+                    target-order="push"
+                    filter-placeholder="搜索 API 名称或请求路径"
+                    class="api-transfer"
+                  >
+                    <template #default="{ option }">
+                      <div class="transfer-item">
+                        <el-tag size="small" :type="getMethodTagType(option.method)">{{ option.method }}</el-tag>
+                        <span>{{ option.api_name }} - {{ option.api_path }}</span>
+                      </div>
+                    </template>
+                  </el-transfer>
+                </div>
+              </template>
+
+              <template v-else-if="importedStep === 2">
+                <div class="step-layout">
+                  <el-descriptions :column="2" border>
+                    <el-descriptions-item label="当前调用方服务">{{ currentImportedCallerName }}</el-descriptions-item>
+                    <el-descriptions-item label="被调用方服务">{{ importedCalleeAppName }}</el-descriptions-item>
+                  </el-descriptions>
+                  <el-table :data="currentImportedApiRows" border max-height="420">
+                    <el-table-column prop="api_name" label="API 名称" min-width="180" />
+                    <el-table-column prop="api_method" label="请求方法" width="120">
+                      <template #default="{ row }">
+                        <el-tag :type="getMethodTagType(row.api_method)">{{ row.api_method }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="api_path" label="请求路径" min-width="280" show-overflow-tooltip />
+                  </el-table>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="step-layout">
+                  <div class="review-summary">
+                    <el-tag>调用方服务 {{ importedAssignments.length }} 个</el-tag>
+                    <el-tag type="success">本次授权 API {{ importedAssignedApiCount }} 个</el-tag>
+                    <el-tag type="info">授权明细 {{ importedReviewRows.length }} 条</el-tag>
+                  </div>
+                  <el-table :data="importedReviewRows" border max-height="420">
+                    <el-table-column prop="caller_app_code" label="调用方服务" width="180" />
+                    <el-table-column prop="api_name" label="API 名称" min-width="180" />
+                    <el-table-column prop="api_method" label="请求方法" width="120">
+                      <template #default="{ row }">
+                        <el-tag :type="getMethodTagType(row.api_method)">{{ row.api_method }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="api_path" label="请求路径" min-width="280" show-overflow-tooltip />
+                  </el-table>
+                </div>
+              </template>
+            </el-card>
+          </div>
+        </div>
+
+        <div v-else class="editor-grid">
           <div class="editor-column">
             <div class="section-head">
-              <h3 class="section-title">{{ isImportedEditor ? 'API 列表' : '已选 API' }}</h3>
-              <span v-if="isImportedEditor" class="section-meta">本次处理 {{ checkedApiIds.length }} 个，剩余 {{ remainingAfterCurrentCount }} 个</span>
+              <h3 class="section-title">已选 API</h3>
             </div>
             <template v-if="isSingleEditor">
               <div class="single-api-box">
@@ -78,29 +183,13 @@
                 <div class="option-subtitle">{{ editorData.selected_apis[0]?.api_path }}</div>
               </div>
             </template>
-            <template v-else-if="isBatchEditor">
+            <template v-else>
               <div class="selected-api-list">
                 <div v-for="item in editorData.selected_apis" :key="item.id" class="selected-api-item">
                   <div class="option-title">{{ item.api_name }}</div>
                   <div class="option-subtitle">{{ item.api_path }}</div>
                 </div>
               </div>
-            </template>
-            <template v-else>
-              <el-input v-model="apiKeyword" clearable placeholder="搜索 API 名称或请求路径" />
-              <div class="quick-actions">
-                <el-checkbox :model-value="allVisibleApisChecked" :indeterminate="someVisibleApisChecked" @change="toggleAllVisibleApis">
-                  全选
-                </el-checkbox>
-                <el-button link type="primary" @click="clearVisibleApis">全不选</el-button>
-              </div>
-              <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
-                <el-checkbox v-for="item in filteredSelectedApis" :key="item.id" :label="item.id">
-                  <span class="option-title">{{ item.api_name }}</span>
-                  <span class="option-subtitle">{{ item.api_path }}</span>
-                </el-checkbox>
-              </el-checkbox-group>
-              <div v-if="!filteredSelectedApis.length" class="empty-text">没有匹配的 API</div>
             </template>
           </div>
 
@@ -129,19 +218,8 @@
             <div class="change-summary">
               <span>总计</span>
               <el-tag>共 {{ checkedAppCodes.length }} 个应用</el-tag>
-              <el-tag v-if="!isSingleEditor" type="info">本次处理 {{ checkedApiIds.length }} 个 API</el-tag>
               <el-tag type="success">新增 {{ addedApps.length }} 个</el-tag>
               <el-tag v-if="isSingleEditor" type="warning">撤销 {{ revokedApps.length }} 个</el-tag>
-            </div>
-
-            <div v-if="!isSingleEditor" class="change-section">
-              <div class="change-section-title info-title">本次处理的 API</div>
-              <div class="change-tags">
-                <el-tag v-for="item in checkedApiItems" :key="item.id" type="info">
-                  {{ item.api_name }}（{{ item.api_path }}）
-                </el-tag>
-                <span v-if="!checkedApiItems.length" class="empty-text">未选择 API</span>
-              </div>
             </div>
 
             <div class="change-section">
@@ -168,11 +246,26 @@
       </div>
 
       <template #footer>
-        <el-button @click="visible = false">取消</el-button>
-        <el-button v-if="isImportedEditor" type="primary" plain @click="submit('continue')">确认并继续</el-button>
-        <el-button type="primary" @click="submit(isImportedEditor ? 'finish' : 'default')">
-          {{ isImportedEditor ? '确认并完成' : '确认' }}
-        </el-button>
+        <template v-if="isImportedEditor">
+          <el-button v-if="importedStep === 0" @click="handleEditorCancel">取消</el-button>
+          <el-button v-else-if="importedStep === 3" @click="cancelImportedReview">取消授权</el-button>
+          <el-button v-else @click="goImportedPrevStep">上一步</el-button>
+
+          <el-button v-if="importedStep === 0" type="primary" :disabled="!importedCallerAppCode" @click="goImportedNextStep">下一步</el-button>
+          <el-button v-else-if="importedStep === 1" type="primary" :disabled="!importedTransferKeys.length" @click="goImportedNextStep">下一步</el-button>
+          <template v-else-if="importedStep === 2">
+            <el-button type="primary" plain @click="submit('continue')">确认并继续</el-button>
+            <el-button type="primary" @click="submit('finish')">确认并完成</el-button>
+          </template>
+          <template v-else>
+            <el-button plain type="primary" @click="restartImportedReview">重新选择</el-button>
+            <el-button type="primary" @click="confirmImportedReview">确认授权</el-button>
+          </template>
+        </template>
+        <template v-else>
+          <el-button @click="handleEditorCancel">取消</el-button>
+          <el-button type="primary" @click="submit('default')">确认</el-button>
+        </template>
       </template>
     </el-dialog>
 
@@ -217,7 +310,15 @@ import {
   saveReverseAuthorization
 } from '@/mock/auth';
 import type { ReverseAuthorizedTargetDetail, ReverseAuthEditorData, ReverseAuthListItem } from '@/types/business';
+import type { HttpMethod } from '@/types/business';
+
 type EditorMode = 'single' | 'batch' | 'imported';
+
+interface ImportedAssignment {
+  app_code: string;
+  app_name: string;
+  api_ids: number[];
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -233,14 +334,29 @@ const detailData = ref<ReverseAuthorizedTargetDetail | null>(null);
 const pagination = reactive({ page: 1, pageSize: 10 });
 const detailPagination = reactive({ page: 1, pageSize: 10 });
 const targetKeyword = ref('');
-const apiKeyword = ref('');
 const checkedAppCodes = ref<string[]>([]);
-const checkedApiIds = ref<number[]>([]);
 const originalAppCodes = ref<string[]>([]);
 const isResettingSelection = ref(false);
-const pendingImportedIds = ref<number[]>([]);
-const completedImportedCount = ref(0);
 const editorMode = ref<EditorMode>('batch');
+
+const pendingImportedIds = ref<number[]>([]);
+const importedInitialIds = ref<number[]>([]);
+const importedAssignments = ref<ImportedAssignment[]>([]);
+const importedCallerAppCode = ref('');
+const importedTransferKeys = ref<number[]>([]);
+const importedApiCatalog = ref<ReverseAuthEditorData['selected_apis']>([]);
+const importedStep = ref(0);
+
+const methodTagTypeMap: Record<HttpMethod, 'success' | 'primary' | 'warning' | 'danger'> = {
+  GET: 'success',
+  POST: 'primary',
+  PUT: 'warning',
+  DELETE: 'danger'
+};
+
+function getMethodTagType(method: string) {
+  return methodTagTypeMap[method as HttpMethod] || 'info';
+}
 
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
@@ -258,42 +374,58 @@ const filteredApps = computed(() => {
   return (editorData.value?.apps || []).filter((item) => !keyword || item.app_code.includes(keyword) || item.app_name.includes(keyword));
 });
 
-const filteredSelectedApis = computed(() => {
-  const keyword = apiKeyword.value.trim();
-  return (editorData.value?.selected_apis || []).filter((item) =>
-    !keyword || item.api_name.includes(keyword) || item.api_path.includes(keyword)
-  );
-});
-
-const checkedApiItems = computed(() => {
-  const checkedSet = new Set(checkedApiIds.value);
-  return (editorData.value?.selected_apis || []).filter((item) => checkedSet.has(item.id));
-});
-const remainingAfterCurrentCount = computed(() => Math.max(pendingImportedIds.value.length - checkedApiIds.value.length, 0));
-
-const pendingFlowVisible = computed(() => pendingImportedIds.value.length > 0 || completedImportedCount.value > 0);
 const isSingleEditor = computed(() => editorMode.value === 'single');
-const isBatchEditor = computed(() => editorMode.value === 'batch');
 const isImportedEditor = computed(() => editorMode.value === 'imported');
-
-const isImportedFlowEditor = computed(() =>
-  Boolean(
-    editorMode.value === 'imported' &&
-    editorData.value?.selected_apis.length &&
-    pendingImportedIds.value.length &&
-    editorData.value.selected_apis.every((item) => pendingImportedIds.value.includes(item.id))
-  )
-);
 
 const appMap = computed(() => new Map((editorData.value?.apps || []).map((item) => [item.app_code, item])));
 const addedApps = computed(() => checkedAppCodes.value.filter((code) => !originalAppCodes.value.includes(code)).map((code) => appMap.value.get(code)!).filter(Boolean));
 const revokedApps = computed(() => originalAppCodes.value.filter((code) => !checkedAppCodes.value.includes(code)).map((code) => appMap.value.get(code)!).filter(Boolean));
-const visibleApiIds = computed(() => filteredSelectedApis.value.map((item) => item.id));
 const visibleAppCodes = computed(() => filteredApps.value.map((item) => item.app_code));
-const allVisibleApisChecked = computed(() => visibleApiIds.value.length > 0 && visibleApiIds.value.every((id) => checkedApiIds.value.includes(id)));
-const someVisibleApisChecked = computed(() => visibleApiIds.value.some((id) => checkedApiIds.value.includes(id)) && !allVisibleApisChecked.value);
 const allVisibleAppsChecked = computed(() => visibleAppCodes.value.length > 0 && visibleAppCodes.value.every((code) => checkedAppCodes.value.includes(code)));
 const someVisibleAppsChecked = computed(() => visibleAppCodes.value.some((code) => checkedAppCodes.value.includes(code)) && !allVisibleAppsChecked.value);
+
+const importedAssignedApiCount = computed(() => importedAssignments.value.reduce((sum, item) => sum + item.api_ids.length, 0));
+const remainingAfterCurrentCount = computed(() => Math.max(pendingImportedIds.value.length - importedTransferKeys.value.length, 0));
+const importedCallerOptions = computed(() => {
+  const calleeAppCode = editorData.value?.selected_apis[0]?.app_code;
+  return (editorData.value?.apps || []).filter((item) => item.app_code !== calleeAppCode);
+});
+const processedImportedAppCodes = computed(() => importedAssignments.value.map((item) => item.app_code));
+const importedTransferData = computed(() =>
+  (editorData.value?.selected_apis || []).map((item) => ({
+    key: item.id,
+    label: `${item.api_method} ${item.api_name} - ${item.api_path}`,
+    api_name: item.api_name,
+    api_path: item.api_path,
+    method: item.api_method
+  }))
+);
+const importedApiMap = computed(() => new Map(importedApiCatalog.value.map((item) => [item.id, item])));
+const importedVersion = computed(() => route.query.version || 'v2.3.0');
+const importedCalleeAppName = computed(() => editorData.value?.selected_apis[0]?.app_name || '未知服务');
+const currentImportedCallerName = computed(() => {
+  const app = importedCallerOptions.value.find((item) => item.app_code === importedCallerAppCode.value);
+  return app ? `${app.app_name}（${app.app_code}）` : '-';
+});
+const currentImportedApiRows = computed(() =>
+  importedTransferKeys.value
+    .map((id) => importedApiMap.value.get(id))
+    .filter(Boolean)
+);
+const importedReviewRows = computed(() =>
+  importedAssignments.value.flatMap((assignment) =>
+    assignment.api_ids.map((apiId) => {
+      const api = importedApiMap.value.get(apiId);
+      return {
+        caller_app_code: assignment.app_code,
+        caller_app_name: assignment.app_name,
+        api_name: api?.api_name || '',
+        api_method: api?.api_method || 'GET',
+        api_path: api?.api_path || ''
+      };
+    })
+  )
+);
 
 async function loadData() {
   const { data } = await fetchReverseAuthApiList(query);
@@ -364,11 +496,6 @@ function syncSelectedRows() {
   selectedRows.value = Array.from(selectedRowMap.value.values());
 }
 
-function clearPendingFlow() {
-  pendingImportedIds.value = [];
-  completedImportedCount.value = 0;
-}
-
 function clearBaseQueryAndSelection() {
   Object.assign(query, { app_code: '', app_name: '', api_name: '', api_path: '' });
   pagination.page = 1;
@@ -377,18 +504,8 @@ function clearBaseQueryAndSelection() {
   tableRef.value?.clearSelection();
 }
 
-function toggleAllVisibleApis(checked: boolean | string | number) {
-  const next = new Set(checkedApiIds.value);
-  if (checked) {
-    visibleApiIds.value.forEach((id) => next.add(id));
-  } else {
-    visibleApiIds.value.forEach((id) => next.delete(id));
-  }
-  checkedApiIds.value = Array.from(next);
-}
-
-function clearVisibleApis() {
-  toggleAllVisibleApis(false);
+function clearVisibleApps() {
+  checkedAppCodes.value = checkedAppCodes.value.filter((code) => !visibleAppCodes.value.includes(code));
 }
 
 function toggleAllVisibleApps(checked: boolean | string | number) {
@@ -401,22 +518,6 @@ function toggleAllVisibleApps(checked: boolean | string | number) {
   checkedAppCodes.value = Array.from(next);
 }
 
-function clearVisibleApps() {
-  toggleAllVisibleApps(false);
-}
-
-function syncRowMapByIds(ids: number[]) {
-  const selectedIdSet = new Set(ids);
-  selectedRowMap.value.clear();
-  list.value.forEach((item) => {
-    if (selectedIdSet.has(item.api_id)) {
-      selectedRowMap.value.set(item.api_id, item);
-    }
-  });
-  syncSelectedRows();
-  restorePageSelection();
-}
-
 function restorePageSelection() {
   nextTick(() => {
     pagedList.value.forEach((row) => {
@@ -425,15 +526,23 @@ function restorePageSelection() {
   });
 }
 
-async function openEditor(apiIds: number[], preserveExisting = true, mode: EditorMode = 'batch') {
+async function openStandardEditor(apiIds: number[], preserveExisting = true, mode: EditorMode = 'batch') {
   const { data } = await fetchReverseAuthEditor(apiIds);
   editorMode.value = mode;
   editorData.value = data;
-  checkedApiIds.value = data.selected_apis.map((item) => item.id);
   checkedAppCodes.value = preserveExisting ? [...data.checked_app_codes] : [];
   originalAppCodes.value = preserveExisting ? [...data.checked_app_codes] : [];
   targetKeyword.value = '';
-  apiKeyword.value = '';
+  visible.value = true;
+}
+
+async function openImportedEditor(apiIds: number[]) {
+  const { data } = await fetchReverseAuthEditor(apiIds);
+  editorMode.value = 'imported';
+  editorData.value = data;
+  importedCallerAppCode.value = '';
+  importedTransferKeys.value = [];
+  importedStep.value = 0;
   visible.value = true;
 }
 
@@ -442,11 +551,11 @@ async function openBatchEditor() {
     ElMessage.warning('请先选择至少一个 API');
     return;
   }
-  await openEditor(selectedRows.value.map((item) => item.api_id), false, 'batch');
+  await openStandardEditor(selectedRows.value.map((item) => item.api_id), false, 'batch');
 }
 
 async function openRowEditor(row: ReverseAuthListItem) {
-  await openEditor([row.api_id], true, 'single');
+  await openStandardEditor([row.api_id], true, 'single');
 }
 
 async function openDetailDrawer(row: ReverseAuthListItem) {
@@ -456,8 +565,76 @@ async function openDetailDrawer(row: ReverseAuthListItem) {
   detailVisible.value = true;
 }
 
+function upsertImportedAssignment(appCode: string, apiIds: number[]) {
+  const app = importedCallerOptions.value.find((item) => item.app_code === appCode);
+  const existed = importedAssignments.value.find((item) => item.app_code === appCode);
+  if (existed) {
+    existed.api_ids = [...new Set([...existed.api_ids, ...apiIds])];
+    return;
+  }
+  importedAssignments.value.push({
+    app_code: appCode,
+    app_name: app?.app_name || appCode,
+    api_ids: [...apiIds]
+  });
+}
+
+function clearImportedFlowState() {
+  pendingImportedIds.value = [];
+  importedInitialIds.value = [];
+  importedAssignments.value = [];
+  importedCallerAppCode.value = '';
+  importedTransferKeys.value = [];
+  importedApiCatalog.value = [];
+}
+
+async function stageImportedSelection() {
+  if (!importedCallerAppCode.value) {
+    ElMessage.warning('请先选择调用方服务');
+    return false;
+  }
+  if (processedImportedAppCodes.value.includes(importedCallerAppCode.value)) {
+    ElMessage.warning('该调用方服务已处理，请重新选择');
+    return false;
+  }
+  if (!importedTransferKeys.value.length) {
+    ElMessage.warning('请至少选择一个 API');
+    return false;
+  }
+  upsertImportedAssignment(importedCallerAppCode.value, importedTransferKeys.value);
+  return true;
+}
+
 async function submit(mode: 'continue' | 'finish' | 'default') {
-  if (!checkedApiIds.value.length) {
+  if (isImportedEditor.value) {
+    if (mode === 'continue') {
+      const staged = await stageImportedSelection();
+      if (!staged) return;
+      pendingImportedIds.value = pendingImportedIds.value.filter((id) => !importedTransferKeys.value.includes(id));
+      if (!pendingImportedIds.value.length) {
+        importedStep.value = 3;
+        return;
+      }
+      await openImportedEditor(pendingImportedIds.value);
+      return;
+    }
+
+    if (mode === 'finish') {
+      if (importedCallerAppCode.value && importedTransferKeys.value.length) {
+        const staged = await stageImportedSelection();
+        if (!staged) return;
+        pendingImportedIds.value = pendingImportedIds.value.filter((id) => !importedTransferKeys.value.includes(id));
+      }
+      if (!importedAssignments.value.length) {
+        ElMessage.warning('请至少完成一组服务与 API 的授权选择');
+        return;
+      }
+      importedStep.value = 3;
+      return;
+    }
+  }
+
+  if (!editorData.value?.selected_apis.length) {
     ElMessage.warning('请至少选择一个 API');
     return;
   }
@@ -466,9 +643,8 @@ async function submit(mode: 'continue' | 'finish' | 'default') {
     return;
   }
 
-  const selectedApiItems = checkedApiItems.value;
   const { code, message } = await saveReverseAuthorization({
-    selected_apis: selectedApiItems.map((item) => ({
+    selected_apis: editorData.value.selected_apis.map((item) => ({
       id: item.id,
       api_path: item.api_path,
       app_code: item.app_code
@@ -482,55 +658,102 @@ async function submit(mode: 'continue' | 'finish' | 'default') {
     return;
   }
 
-  const handledIds = selectedApiItems.map((item) => item.id);
-  const isImportedFlow = isImportedFlowEditor.value;
   ElMessage.success(message);
-  await loadData();
-
-  if (mode === 'continue' && isImportedFlow) {
-    completedImportedCount.value += handledIds.length;
-    pendingImportedIds.value = pendingImportedIds.value.filter((id) => !handledIds.includes(id));
-    syncRowMapByIds(pendingImportedIds.value);
-
-    if (!pendingImportedIds.value.length) {
-      visible.value = false;
-      editorData.value = null;
-      const totalHandled = completedImportedCount.value;
-      clearPendingFlow();
-      clearBaseQueryAndSelection();
-      await loadData();
-      ElMessage.success(`新增 API 已全部处理完成，共完成 ${totalHandled} 个`);
-      await router.replace({ path: '/auth/api-reverse' });
-      return;
-    }
-
-    await openEditor(pendingImportedIds.value, false, 'imported');
-    return;
-  }
-
   visible.value = false;
   editorData.value = null;
-  if (isImportedFlow) {
-    clearPendingFlow();
-    clearBaseQueryAndSelection();
-    await loadData();
-    await router.replace({ path: '/auth/api-reverse' });
+  await loadData();
+}
+
+async function confirmImportedReview() {
+  for (const assignment of importedAssignments.value) {
+    const selectedApis = assignment.api_ids
+      .map((id) => importedApiMap.value.get(id))
+      .filter(Boolean)
+      .map((item) => ({
+        id: item!.id,
+        api_path: item!.api_path,
+        app_code: item!.app_code
+      }));
+    const { code, message } = await saveReverseAuthorization({
+      selected_apis: selectedApis,
+      checked_app_codes: [assignment.app_code],
+      original_app_codes: []
+    });
+    if (code !== 0) {
+      ElMessage.error(message);
+      return;
+    }
   }
+
+  ElMessage.success('新增 API 授权确认成功');
+  visible.value = false;
+  editorData.value = null;
+  clearImportedFlowState();
+  clearBaseQueryAndSelection();
+  await loadData();
+  await router.replace({ path: '/auth/api-reverse' });
+}
+
+async function restartImportedReview() {
+  importedAssignments.value = [];
+  pendingImportedIds.value = [...importedInitialIds.value];
+  await openImportedEditor(importedInitialIds.value);
+}
+
+async function cancelImportedReview() {
+  visible.value = false;
+  editorData.value = null;
+  clearImportedFlowState();
+  clearBaseQueryAndSelection();
+  await loadData();
+  await router.replace({ path: '/auth/api-reverse' });
+}
+
+async function handleEditorCancel() {
+  visible.value = false;
+  if (!isImportedEditor.value) {
+    return;
+  }
+  editorData.value = null;
+  clearImportedFlowState();
+  clearBaseQueryAndSelection();
+  await loadData();
+  await router.replace({ path: '/auth/api-reverse' });
 }
 
 async function tryOpenFromRoute() {
   const idsParam = route.query.api_ids;
-  const appCodeParam = route.query.app_code;
-  if (typeof appCodeParam === 'string' && appCodeParam) {
-    query.app_code = appCodeParam;
-  }
   if (typeof idsParam !== 'string' || !idsParam) return;
   const ids = idsParam.split(',').map((item) => Number(item)).filter((item) => !Number.isNaN(item));
   if (!ids.length) return;
-  pendingImportedIds.value = ids;
-  completedImportedCount.value = 0;
-  syncRowMapByIds(ids);
-  await openEditor(ids, false, 'imported');
+  pendingImportedIds.value = [...ids];
+  importedInitialIds.value = [...ids];
+  importedAssignments.value = [];
+  const { data } = await fetchReverseAuthEditor(ids);
+  importedApiCatalog.value = data.selected_apis;
+  await openImportedEditor(ids);
+}
+
+function goImportedPrevStep() {
+  if (importedStep.value > 0) {
+    importedStep.value -= 1;
+  }
+}
+
+function goImportedNextStep() {
+  if (importedStep.value === 0) {
+    if (!importedCallerAppCode.value) return;
+    if (processedImportedAppCodes.value.includes(importedCallerAppCode.value)) {
+      ElMessage.warning('该调用方服务已处理，请重新选择');
+      return;
+    }
+    importedStep.value = 1;
+    return;
+  }
+  if (importedStep.value === 1) {
+    if (!importedTransferKeys.value.length) return;
+    importedStep.value = 2;
+  }
 }
 
 onMounted(async () => {
@@ -577,8 +800,36 @@ watch(
 
 .editor-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 0.92fr;
+  grid-template-columns: 1.1fr 1fr 0.92fr;
   gap: 16px;
+}
+
+.imported-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.6fr;
+  gap: 16px;
+}
+
+.imported-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step-card {
+  border-radius: 12px;
+}
+
+.step-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .editor-column {
@@ -590,6 +841,17 @@ watch(
   border-radius: 12px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.imported-transfer-column {
+  overflow: hidden;
+}
+
+.service-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 
@@ -612,7 +874,8 @@ watch(
   font-size: 12px;
 }
 
-.single-api-box {
+.single-api-box,
+.selected-api-item {
   padding: 12px 14px;
   border: 1px solid var(--sg-border);
   border-radius: 10px;
@@ -626,14 +889,6 @@ watch(
   overflow: auto;
 }
 
-.selected-api-item {
-  padding: 12px 14px;
-  border: 1px solid var(--sg-border);
-  border-radius: 10px;
-  background: #f8fafc;
-}
-
-.api-checkbox-list,
 .target-checkbox-list {
   display: flex;
   flex-direction: column;
@@ -641,7 +896,6 @@ watch(
   overflow: auto;
 }
 
-.api-checkbox-list :deep(.el-checkbox),
 .target-checkbox-list :deep(.el-checkbox) {
   height: auto;
   align-items: flex-start;
@@ -663,7 +917,8 @@ watch(
   word-break: break-all;
 }
 
-.change-summary {
+.change-summary,
+.review-summary {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -673,6 +928,10 @@ watch(
   background: #f1f5f9;
   color: var(--sg-text);
   font-weight: 600;
+}
+
+.review-summary {
+  margin-bottom: 16px;
 }
 
 .change-section {
@@ -722,6 +981,21 @@ watch(
   justify-content: space-between;
   gap: 12px;
   padding: 2px 0 4px;
+}
+
+.api-transfer {
+  flex: 1;
+}
+
+.api-transfer :deep(.el-transfer-panel) {
+  width: 100%;
+}
+
+.transfer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .detail-summary {
