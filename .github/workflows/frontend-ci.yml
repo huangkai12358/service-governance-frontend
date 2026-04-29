@@ -1,0 +1,40 @@
+name: Frontend CI
+
+# 触发条件：当代码推送到 main/master 分支，或发起 PR 时自动执行
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # 在最新的 Ubuntu 环境下运行
+
+    steps:
+    # 1. 拉取代码库
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. 配置 Node.js 环境
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20 # 根据你项目的情况，Node.js 20 是目前最稳定的长期支持版本
+        cache: 'npm'     # 开启 npm 缓存，加快以后的构建速度
+
+    # 3. 安装项目依赖
+    - name: Install dependencies
+      run: npm ci # 使用 npm ci 代替 npm install，它会严格按照 package-lock.json 安装，更稳定且速度更快
+
+    # 4. 执行类型检查与代码打包
+    - name: Build project
+      run: npm run build # 对应你 package.json 里的 vue-tsc -b && vite build
+
+    # 5. （可选）上传构建产物 (dist 目录)
+    # 这样你就可以在每次 Action 运行成功后，直接下载打包好的前端静态文件
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: dist/
