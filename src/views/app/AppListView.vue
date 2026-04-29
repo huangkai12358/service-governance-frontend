@@ -132,7 +132,7 @@
       <template #header>
         <div class="drawer-header">
           <span>APP 详情</span>
-          <el-button type="primary" @click="exportDetailToExcel" :disabled="!detail">导出为Excel</el-button>
+          <el-button type="primary" @click="exportDetailToExcel" :disabled="!detail">导出为 Excel</el-button>
         </div>
       </template>
 

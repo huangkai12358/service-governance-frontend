@@ -34,8 +34,8 @@
         <el-table-column prop="authorized_app_count" label="已授权应用数" width="120" align="center" />
         <el-table-column label="操作" width="170" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openRowEditor(row)">授权</el-button>
-            <el-button link @click="openDetailDrawer(row)">已授权应用</el-button>
+            <el-button link type="primary" @click="openDetailDrawer(row)">详情</el-button>            
+            <el-button link type="primary" @click="openRowEditor(row)">反向授权</el-button>
           </template>
         </el-table-column>
       </el-table>

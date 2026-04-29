@@ -41,11 +41,13 @@ function getApiPathsByIds(apiIds: number[]) {
   return apis.filter((item) => apiIds.includes(item.id)).map((item) => item.api_path);
 }
 
-export async function fetchSingleAppAuthList(query: { caller_app_code?: string; callee_app_code?: string }) {
+export async function fetchSingleAppAuthList(query: { caller_app_code?: string; caller_app_name?: string; callee_app_code?: string; callee_app_name?: string }) {
   const list = singleAppAuthorizations.filter((item) => {
     return item.api_paths.length > 0 &&
       (!query.caller_app_code || item.caller_app_code.includes(query.caller_app_code)) &&
-      (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code));
+      (!query.caller_app_name || item.caller_app_name.includes(query.caller_app_name)) &&
+      (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code)) &&
+      (!query.callee_app_name || item.callee_app_name.includes(query.callee_app_name));
   });
   return wait(success(list));
 }
@@ -65,14 +67,24 @@ export async function fetchSingleAppAuthorizationCreator() {
   const appOptions = buildAppOptions();
   const dialogData: SingleAppAuthorizationDialogData = {
     app_options: appOptions,
-    data: buildAuthorizationEditorData(appOptions[0]?.app_code || '')
+    data: buildAuthorizationEditorData('')
   };
   return wait(success(dialogData));
 }
 
-export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string) {
-  const data = buildAuthorizationEditorData(calleeAppCode);
+export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string, callerAppCode?: string) {
+  const checkedApiPaths = singleAppAuthorizations.find((item) =>
+    item.caller_app_code === callerAppCode && item.callee_app_code === calleeAppCode
+  )?.api_paths || [];
+  const data = buildAuthorizationEditorData(calleeAppCode, checkedApiPaths);
   return wait(success(data));
+}
+
+export async function fetchExistingSingleAppAuthorization(callerAppCode: string, calleeAppCode: string) {
+  const current = singleAppAuthorizations.find((item) =>
+    item.caller_app_code === callerAppCode && item.callee_app_code === calleeAppCode
+  ) || null;
+  return wait(success(current));
 }
 
 export function calcAuthorizationDelta(originalApiIds: number[], nextApiIds: number[]): AuthorizationDelta {
