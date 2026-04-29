@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <div class="page-title">
       <h2>APP 管理</h2>
@@ -46,6 +46,12 @@
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-form-item label="应用编码" prop="app_code"><el-input v-model="createForm.app_code" /></el-form-item>
         <el-form-item label="应用名称" prop="app_name"><el-input v-model="createForm.app_name" /></el-form-item>
+        <el-form-item label="密码一" prop="primary_password">
+          <el-input v-model="createForm.primary_password" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="密码二">
+          <el-input v-model="createForm.secondary_password" type="password" show-password />
+        </el-form-item>
         <el-form-item label="应用说明"><el-input v-model="createForm.app_description" type="textarea" /></el-form-item>
       </el-form>
       <template #footer>
@@ -59,6 +65,63 @@
         <el-form-item label="应用名称" prop="app_name"><el-input v-model="editForm.app_name" /></el-form-item>
         <el-form-item label="应用说明"><el-input v-model="editForm.app_description" type="textarea" /></el-form-item>
       </el-form>
+
+      <div class="password-section">
+        <div class="password-row">
+          <div class="password-row-label">密码一</div>
+          <div class="password-row-value">
+            <el-tag size="small" :type="editForm.primary_password ? 'success' : 'info'">
+              {{ editForm.primary_password ? '已配置' : '未配置' }}
+            </el-tag>
+          </div>
+          <div class="password-row-action">
+            <el-button
+              link
+              type="danger"
+              :disabled="!canRemovePrimaryPassword"
+              @click="handleRemovePassword('primary')"
+            >
+              删除
+            </el-button>
+          </div>
+        </div>
+
+        <div class="password-row">
+          <div class="password-row-label">密码二</div>
+          <div class="password-row-value">
+            <el-tag size="small" :type="editForm.secondary_password ? 'warning' : 'info'">
+              {{ editForm.secondary_password ? '已配置' : '未配置' }}
+            </el-tag>
+          </div>
+          <div class="password-row-action">
+            <el-button
+              link
+              type="danger"
+              :disabled="!editForm.secondary_password"
+              @click="handleRemovePassword('secondary')"
+            >
+              删除
+            </el-button>
+          </div>
+        </div>
+      </div>
+
+      <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px" class="password-create-form">
+        <el-form-item label="新增密码" prop="password">
+          <div class="password-input-group">
+            <el-input
+              v-model="passwordForm.password"
+              type="password"
+              show-password
+              :disabled="hasTwoPasswords"
+              placeholder="仅当存在空密码槽位时才允许新增"
+            />
+            <el-button type="primary" plain :disabled="hasTwoPasswords" @click="handleAddPassword">添加密码</el-button>
+          </div>
+          <div v-if="hasTwoPasswords" class="password-tip">当前已存在密码一和密码二，不能继续添加。</div>
+        </el-form-item>
+      </el-form>
+
       <template #footer>
         <el-button @click="editVisible = false">取消</el-button>
         <el-button type="primary" @click="submitEdit">确认</el-button>
@@ -106,20 +169,36 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { deleteApp, fetchAppList, saveApp } from '@/mock/app';
+import { addAppPassword, deleteApp, fetchAppList, removeAppPassword, saveApp } from '@/mock/app';
 import { apis } from '@/mock/base';
+import type { AppEditorPayload, AppItem } from '@/types/business';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '' });
 const detailQuery = reactive({ page: 1, pageSize: 10 });
-const tableData = reactive({ list: [] as any[], total: 0 });
+const tableData = reactive({ list: [] as AppItem[], total: 0 });
 const detailVisible = ref(false);
 const createVisible = ref(false);
 const editVisible = ref(false);
-const detail = ref<any>(null);
+const detail = ref<AppItem | null>(null);
 const createFormRef = ref<FormInstance>();
 const editFormRef = ref<FormInstance>();
-const createForm = reactive({ app_code: '', app_name: '', app_description: '' });
-const editForm = reactive<any>({ id: 0, app_name: '', app_description: '' });
+const passwordFormRef = ref<FormInstance>();
+const createForm = reactive<AppEditorPayload>({
+  app_code: '',
+  app_name: '',
+  app_description: '',
+  primary_password: '',
+  secondary_password: ''
+});
+const editForm = reactive<AppEditorPayload>({
+  id: 0,
+  app_code: '',
+  app_name: '',
+  app_description: '',
+  primary_password: '',
+  secondary_password: ''
+});
+const passwordForm = reactive({ password: '' });
 const allApis = ref<any[]>([]);
 
 const detailApis = computed(() =>
@@ -133,12 +212,18 @@ const pagedDetailApis = computed(() => {
 
 const createRules: FormRules = {
   app_code: [{ required: true, message: '请输入应用编码', trigger: 'blur' }],
-  app_name: [{ required: true, message: '请输入应用名称', trigger: 'blur' }]
+  app_name: [{ required: true, message: '请输入应用名称', trigger: 'blur' }],
+  primary_password: [{ required: true, message: '请输入密码一', trigger: 'blur' }]
 };
 
 const editRules: FormRules = {
   app_name: [{ required: true, message: '请输入应用名称', trigger: 'blur' }]
 };
+const passwordRules: FormRules = {
+  password: [{ required: true, message: '请输入新增密码', trigger: 'blur' }]
+};
+const hasTwoPasswords = computed(() => Boolean(editForm.primary_password && editForm.secondary_password));
+const canRemovePrimaryPassword = computed(() => Boolean(editForm.primary_password && editForm.secondary_password));
 
 async function loadData() {
   const { data } = await fetchAppList(query);
@@ -161,16 +246,24 @@ function handleDetailPageSizeChange() {
 }
 
 function openCreate() {
-  Object.assign(createForm, { app_code: '', app_name: '', app_description: '' });
+  Object.assign(createForm, { app_code: '', app_name: '', app_description: '', primary_password: '', secondary_password: '' });
   createVisible.value = true;
 }
 
-function openEdit(row: any) {
-  Object.assign(editForm, row);
+function openEdit(row: AppItem) {
+  Object.assign(editForm, {
+    id: row.id,
+    app_code: row.app_code,
+    app_name: row.app_name,
+    app_description: row.app_description,
+    primary_password: row.primary_password,
+    secondary_password: row.secondary_password
+  });
+  passwordForm.password = '';
   editVisible.value = true;
 }
 
-function showDetail(row: any) {
+function showDetail(row: AppItem) {
   detail.value = row;
   Object.assign(detailQuery, { page: 1, pageSize: 10 });
   detailVisible.value = true;
@@ -178,13 +271,14 @@ function showDetail(row: any) {
 
 function exportDetailToExcel() {
   if (!detail.value) return;
+  const currentDetail = detail.value;
 
   const headers = ['应用编码', '应用名称', '应用说明', '当前版本号', 'API名称', '请求路径', '请求方法'];
   const rows = detailApis.value.map((item) => [
-    detail.value.app_code,
-    detail.value.app_name,
-    detail.value.app_description || '',
-    detail.value.current_version,
+    currentDetail.app_code,
+    currentDetail.app_name,
+    currentDetail.app_description || '',
+    currentDetail.current_version,
     item.api_name,
     item.api_path,
     item.api_method
@@ -200,7 +294,7 @@ function exportDetailToExcel() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${detail.value.app_code}-detail-export.csv`;
+  link.download = `${currentDetail.app_code}-detail-export.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -210,20 +304,96 @@ function exportDetailToExcel() {
 async function submitCreate() {
   const valid = await createFormRef.value?.validate().catch(() => false);
   if (!valid) return;
-  const { message } = await saveApp();
+  const { code, message } = await saveApp({ ...createForm });
+  if (code !== 0) {
+    ElMessage.error(message);
+    return;
+  }
   ElMessage.success(message);
   createVisible.value = false;
+  await loadData();
 }
 
 async function submitEdit() {
   const valid = await editFormRef.value?.validate().catch(() => false);
   if (!valid) return;
-  const { message } = await saveApp();
+  const { code, message } = await saveApp({
+    id: editForm.id,
+    app_code: editForm.app_code,
+    app_name: editForm.app_name,
+    app_description: editForm.app_description,
+    primary_password: editForm.primary_password,
+    secondary_password: editForm.secondary_password
+  });
+  if (code !== 0) {
+    ElMessage.error(message);
+    return;
+  }
   ElMessage.success(message);
   editVisible.value = false;
+  await loadData();
 }
 
-async function handleDelete(row: any) {
+async function handleAddPassword() {
+  if (!editForm.id || hasTwoPasswords.value) {
+    return;
+  }
+  const valid = await passwordFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
+  const { code, message } = await addAppPassword({
+    id: editForm.id,
+    password: passwordForm.password
+  });
+  if (code !== 0) {
+    ElMessage.error(message);
+    return;
+  }
+  ElMessage.success(message);
+  // 中文注释：添加密码后同步刷新编辑表单，避免页面状态和内存数据不一致。
+  if (!editForm.primary_password) {
+    editForm.primary_password = passwordForm.password;
+  } else {
+    editForm.secondary_password = passwordForm.password;
+  }
+  passwordForm.password = '';
+  await loadData();
+}
+
+async function handleRemovePassword(target: 'primary' | 'secondary') {
+  if (!editForm.id) {
+    return;
+  }
+  if (target === 'primary' && !canRemovePrimaryPassword.value) {
+    ElMessage.warning('当前仅剩一个密码一，不能删除，否则服务将处于无密码状态');
+    return;
+  }
+  const confirmMessage = target === 'primary'
+    ? '确认删除密码一吗？删除后，密码二将自动转为密码一。'
+    : '确认删除密码二吗？删除后将仅保留当前密码一。';
+  await ElMessageBox.confirm(confirmMessage, '删除确认', {
+    type: 'warning',
+    confirmButtonText: '确认删除',
+    cancelButtonText: '取消'
+  });
+  const { code, message } = await removeAppPassword({
+    id: editForm.id,
+    target
+  });
+  if (code !== 0) {
+    ElMessage.error(message);
+    return;
+  }
+  ElMessage.success(message);
+  if (target === 'primary') {
+    editForm.primary_password = editForm.secondary_password;
+    editForm.secondary_password = '';
+  } else {
+    editForm.secondary_password = '';
+  }
+  await loadData();
+}
+
+async function handleDelete(row: AppItem) {
   await ElMessageBox.confirm(`确认删除 APP「${row.app_name}」吗？`, '删除确认', { type: 'warning' });
   const { message } = await deleteApp();
   ElMessage.success(message);
@@ -260,5 +430,58 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.password-section-head {
+  margin-top: 20px;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.password-section {
+  margin-top: 20px;
+  padding-top: 8px;
+  border-top: 1px solid var(--sg-border);
+}
+
+.password-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.password-row-label {
+  min-width: 88px;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+.password-row-value {
+  flex: 1;
+}
+
+.password-row-action {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 96px;
+}
+
+.password-tip {
+  color: var(--sg-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.password-create-form {
+  margin-top: 20px;
+}
+
+.password-input-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
 }
 </style>

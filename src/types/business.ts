@@ -16,6 +16,13 @@ export interface OverviewStats {
   today_call_total: number;
 }
 
+export type AuthServiceMode = 'ENABLED' | 'BYPASS';
+
+export interface AuthServiceSettings {
+  mode: AuthServiceMode;
+  updated_at: string;
+}
+
 export interface ActivityRecord {
   id: number;
   title: string;
@@ -28,10 +35,27 @@ export interface AppItem {
   app_code: string;
   app_name: string;
   app_description: string;
+  primary_password: string;
+  secondary_password: string;
   current_version: string;
   create_time: string;
   update_time: string;
   is_deleted: 0 | 1;
+}
+
+export interface AppEditorPayload {
+  id?: number;
+  app_code: string;
+  app_name: string;
+  app_description: string;
+  primary_password: string;
+  secondary_password: string;
+}
+
+export interface AppPasswordPayload {
+  id: number;
+  password?: string;
+  target?: 'primary' | 'secondary';
 }
 
 export interface ApiItem {

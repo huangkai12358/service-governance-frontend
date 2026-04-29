@@ -123,12 +123,12 @@ const appGroupThemes = [
 ];
 
 const seedApps: AppItem[] = [
-  { id: 1, app_code: 'order-service', app_name: '订单中心', app_description: '负责订单创建、查询和关闭等流程', current_version: 'v2.3.0', create_time: '2026-03-01 09:00:00', update_time: '2026-04-21 17:20:00', is_deleted: 0 },
-  { id: 2, app_code: 'user-service', app_name: '用户中心', app_description: '提供会员资料、会员等级和实名能力', current_version: 'v1.4.1', create_time: '2026-03-02 09:00:00', update_time: '2026-04-20 16:00:00', is_deleted: 0 },
-  { id: 3, app_code: 'pay-gateway', app_name: '支付网关', app_description: '提供支付预校验、支付提交、退款能力', current_version: 'v3.0.1', create_time: '2026-03-03 09:00:00', update_time: '2026-04-22 10:10:00', is_deleted: 0 },
-  { id: 4, app_code: 'stock-service', app_name: '库存服务', app_description: '提供库存校验、预占和释放接口', current_version: 'v1.8.2', create_time: '2026-03-05 09:00:00', update_time: '2026-04-19 14:40:00', is_deleted: 0 },
-  { id: 5, app_code: 'marketing-service', app_name: '营销平台', app_description: '提供优惠券校验和活动资格能力', current_version: 'v2.0.0', create_time: '2026-03-07 09:00:00', update_time: '2026-04-18 11:30:00', is_deleted: 0 },
-  { id: 6, app_code: 'risk-engine', app_name: '风控引擎', app_description: '提供黑名单校验和风险决策能力', current_version: 'v4.1.0', create_time: '2026-03-10 09:00:00', update_time: '2026-04-21 09:50:00', is_deleted: 0 }
+  { id: 1, app_code: 'order-service', app_name: '订单中心', app_description: '负责订单创建、查询和关闭等流程', primary_password: 'Order@2026#A', secondary_password: '', current_version: 'v2.3.0', create_time: '2026-03-01 09:00:00', update_time: '2026-04-21 17:20:00', is_deleted: 0 },
+  { id: 2, app_code: 'user-service', app_name: '用户中心', app_description: '提供会员资料、会员等级和实名能力', primary_password: 'User@2026#A', secondary_password: '', current_version: 'v1.4.1', create_time: '2026-03-02 09:00:00', update_time: '2026-04-20 16:00:00', is_deleted: 0 },
+  { id: 3, app_code: 'pay-gateway', app_name: '支付网关', app_description: '提供支付预校验、支付提交、退款能力', primary_password: 'Pay@2026#A', secondary_password: 'Pay@2026#B', current_version: 'v3.0.1', create_time: '2026-03-03 09:00:00', update_time: '2026-04-22 10:10:00', is_deleted: 0 },
+  { id: 4, app_code: 'stock-service', app_name: '库存服务', app_description: '提供库存校验、预占和释放接口', primary_password: 'Stock@2026#A', secondary_password: '', current_version: 'v1.8.2', create_time: '2026-03-05 09:00:00', update_time: '2026-04-19 14:40:00', is_deleted: 0 },
+  { id: 5, app_code: 'marketing-service', app_name: '营销平台', app_description: '提供优惠券校验和活动资格能力', primary_password: 'Marketing@2026#A', secondary_password: '', current_version: 'v2.0.0', create_time: '2026-03-07 09:00:00', update_time: '2026-04-18 11:30:00', is_deleted: 0 },
+  { id: 6, app_code: 'risk-engine', app_name: '风控引擎', app_description: '提供黑名单校验和风险决策能力', primary_password: 'Risk@2026#A', secondary_password: '', current_version: 'v4.1.0', create_time: '2026-03-10 09:00:00', update_time: '2026-04-21 09:50:00', is_deleted: 0 }
 ];
 
 const generatedApps: AppItem[] = Array.from({ length: APP_TOTAL - seedApps.length }, (_, index) => {
@@ -140,6 +140,8 @@ const generatedApps: AppItem[] = Array.from({ length: APP_TOTAL - seedApps.lengt
     app_code: `${domain.code}-${capability.code}-service`,
     app_name: `${domain.name}${capability.name}${capability.suffix}`,
     app_description: `${domain.name}域${capability.desc}，用于服务资产治理、授权配置和调用审计`,
+    primary_password: `${domain.name}${capability.name}@2026#A`,
+    secondary_password: '',
     current_version: `v${(no % 5) + 1}.${no % 10}.${index % 4}`,
     create_time: `2026-03-${pad((index % 25) + 1)} 09:00:00`,
     update_time: dateTime(index + 1, 9 + (index % 9), (index * 7) % 60),
