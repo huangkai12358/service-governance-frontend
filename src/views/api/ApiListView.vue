@@ -66,11 +66,6 @@
           </el-select>
         </el-form-item>
         <el-form-item label="描述"><el-input v-model="createForm.api_description" type="textarea" /></el-form-item>
-        <el-form-item label="所在的API分组">
-          <el-select v-model="createForm.api_group_ids" multiple collapse-tags style="width:100%">
-            <el-option v-for="group in currentAppGroups" :key="group.id" :label="group.api_group_name" :value="group.id" />
-          </el-select>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
@@ -82,11 +77,6 @@
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="120px">
         <el-form-item label="API 名称" prop="api_name"><el-input v-model="editForm.api_name" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="editForm.api_description" type="textarea" /></el-form-item>
-        <el-form-item label="所在的API分组">
-          <el-select v-model="editForm.api_group_ids" multiple collapse-tags style="width:100%">
-            <el-option v-for="group in currentEditGroups" :key="group.id" :label="group.api_group_name" :value="group.id" />
-          </el-select>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editVisible = false">取消</el-button>
@@ -98,24 +88,20 @@
       <el-descriptions v-if="detail" :column="1" border>
         <el-descriptions-item label="请求路径">{{ detail.api_path }}</el-descriptions-item>
         <el-descriptions-item label="描述">{{ detail.api_description || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="所在的API分组">
-          <el-tag v-for="group in detail.api_group_names" :key="group" style="margin-right:8px">{{ group }}</el-tag>
-          <span v-if="!detail.api_group_names.length">未分组</span>
-        </el-descriptions-item>
       </el-descriptions>
     </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
 import { deleteApi, fetchApiList, fetchApiOptions, saveApi } from '@/mock/api';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', version: '' });
 const tableData = reactive({ list: [] as any[], total: 0 });
-const options = reactive({ apps: [] as any[], apiGroups: [] as any[] });
+const options = reactive({ apps: [] as any[] });
 const detailVisible = ref(false);
 const createVisible = ref(false);
 const editVisible = ref(false);
@@ -128,16 +114,14 @@ const createForm = reactive<any>({
   api_name: '',
   api_path: '',
   api_method: 'GET',
-  api_description: '',
-  api_group_ids: []
+  api_description: ''
 });
 
 const editForm = reactive<any>({
   id: 0,
   app_code: '',
   api_name: '',
-  api_description: '',
-  api_group_ids: []
+  api_description: ''
 });
 
 const createRules: FormRules = {
@@ -151,13 +135,9 @@ const editRules: FormRules = {
   api_name: [{ required: true, message: '请输入 API 名称', trigger: 'blur' }]
 };
 
-const currentAppGroups = computed(() => options.apiGroups.filter((item) => item.app_code === createForm.app_code));
-const currentEditGroups = computed(() => options.apiGroups.filter((item) => item.app_code === editForm.app_code));
-
 async function loadOptions() {
   const { data } = await fetchApiOptions();
   options.apps = data.apps;
-  options.apiGroups = data.apiGroups;
 }
 
 async function loadData() {
@@ -177,7 +157,7 @@ function handlePageSizeChange() {
 }
 
 function openCreate() {
-  Object.assign(createForm, { app_code: '', api_name: '', api_path: '', api_method: 'GET', api_description: '', api_group_ids: [] });
+  Object.assign(createForm, { app_code: '', api_name: '', api_path: '', api_method: 'GET', api_description: '' });
   createVisible.value = true;
 }
 

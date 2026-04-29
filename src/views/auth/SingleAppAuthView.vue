@@ -113,32 +113,6 @@
               </el-checkbox>
             </el-checkbox-group>
           </div>
-
-          <div class="editor-column">
-            <h3 class="section-title">从分组中选择</h3>
-            <el-collapse v-model="activeGroups">
-              <el-collapse-item v-for="group in editorData.api_groups" :key="group.id" :name="group.id">
-                <template #title>
-                  <div class="group-title">
-                    <el-checkbox
-                      :model-value="isGroupChecked(group)"
-                      :indeterminate="isGroupIndeterminate(group)"
-                      @click.stop
-                      @change="toggleGroup(group, $event)"
-                    />
-                    <span class="group-name">{{ group.api_group_name }}</span>
-                  </div>
-                </template>
-                <el-checkbox-group v-model="checkedApiIds" class="group-api-list">
-                  <el-checkbox v-for="api in getGroupApis(group)" :key="api.id" :label="api.id">
-                    <span class="option-title">{{ api.api_name }}</span>
-                    <span class="option-subtitle">{{ api.api_path }}</span>
-                  </el-checkbox>
-                </el-checkbox-group>
-              </el-collapse-item>
-            </el-collapse>
-          </div>
-
           <div class="editor-column">
             <h3 class="section-title">变更预览</h3>
             <div class="change-summary">
@@ -199,7 +173,6 @@ const editingId = ref<number>();
 const originalApiIds = ref<number[]>([]);
 const checkedApiIds = ref<number[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
-const activeGroups = ref<number[]>([]);
 const apiKeyword = ref('');
 const form = reactive({ caller_app_code: '', callee_app_code: '' });
 
@@ -242,7 +215,6 @@ function handlePageSizeChange() {
 function resetEditorState() {
   originalApiIds.value = [];
   checkedApiIds.value = [];
-  activeGroups.value = [];
   apiKeyword.value = '';
 }
 
@@ -251,7 +223,6 @@ function applyEditorData(data: AuthorizationEditorData, checkedIds?: number[]) {
   const nextCheckedIds = checkedIds ? [...checkedIds] : [...data.checked_api_ids];
   originalApiIds.value = dialogMode.value === 'edit' ? [...nextCheckedIds] : [];
   checkedApiIds.value = [...nextCheckedIds];
-  activeGroups.value = [];
   apiKeyword.value = '';
 }
 
@@ -291,37 +262,14 @@ async function openEditor(id: number) {
 }
 
 async function handleCalleeChange() {
-  // 新增场景切换被调用方时，需要重新装载该应用下可授权的 API 和分组。
+  // 新增场景切换被调用方时，需要重新装载该应用下可授权的 API。
   if (!form.callee_app_code) {
-    applyEditorData({ apis: [], api_groups: [], checked_api_ids: [], checked_group_ids: [] }, []);
+    applyEditorData({ apis: [], checked_api_ids: [] }, []);
     return;
   }
 
   const { data } = await fetchSingleAppAuthorizationOptions(form.callee_app_code);
   applyEditorData(data, []);
-}
-
-function getGroupApis(group: AuthorizationEditorData['api_groups'][number]) {
-  return editorData.value?.apis.filter((item) => group.api_ids.includes(item.id)) || [];
-}
-
-function isGroupChecked(group: AuthorizationEditorData['api_groups'][number]) {
-  return group.api_ids.length > 0 && group.api_ids.every((id) => checkedApiIds.value.includes(id));
-}
-
-function isGroupIndeterminate(group: AuthorizationEditorData['api_groups'][number]) {
-  const count = group.api_ids.filter((id) => checkedApiIds.value.includes(id)).length;
-  return count > 0 && count < group.api_ids.length;
-}
-
-function toggleGroup(group: AuthorizationEditorData['api_groups'][number], checked: string | number | boolean) {
-  const next = new Set(checkedApiIds.value);
-  if (checked) {
-    group.api_ids.forEach((id) => next.add(id));
-  } else {
-    group.api_ids.forEach((id) => next.delete(id));
-  }
-  checkedApiIds.value = Array.from(next);
 }
 
 async function exportToExcel() {
@@ -552,5 +500,4 @@ onMounted(loadData);
   font-size: 13px;
 }
 </style>
-
 

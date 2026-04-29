@@ -3,8 +3,7 @@ import {
   Grid,
   Histogram,
   Monitor,
-  OfficeBuilding,
-  Share
+  OfficeBuilding
 } from '@element-plus/icons-vue';
 
 export interface MenuItem {
@@ -16,7 +15,7 @@ export interface MenuItem {
 
 export const menus: MenuItem[] = [
   { title: '首页', path: '/dashboard', icon: Grid },
-  { title: 'API授权拓扑图', path: '/dashboard/topology', icon: Connection },
+  { title: 'API 授权拓扑图', path: '/dashboard/topology', icon: Connection },
   {
     title: 'API 管理',
     path: '/api',
@@ -32,12 +31,6 @@ export const menus: MenuItem[] = [
     path: '/app',
     icon: OfficeBuilding,
     children: [{ title: 'APP 列表', path: '/app/list' }]
-  },
-  {
-    title: '分组管理',
-    path: '/groups',
-    icon: Share,
-    children: [{ title: 'API 分组', path: '/groups/api' }]
   },
   {
     title: '权限管理',

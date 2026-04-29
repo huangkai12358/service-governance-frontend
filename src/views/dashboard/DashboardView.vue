@@ -121,7 +121,6 @@ const updating = ref(false);
 const statCards = computed(() => [
   { label: '应用总数', value: stats.value?.app_total ?? 0 },
   { label: 'API总数', value: stats.value?.api_total ?? 0 },
-  { label: 'API分组总数', value: stats.value?.api_group_total ?? 0 },
   { label: '授权关系总数', value: stats.value?.auth_relation_total ?? 0 },
   { label: 'SmartDoc导入次数', value: stats.value?.smartdoc_import_total ?? 0 },
   { label: '今日调用记录', value: stats.value?.today_call_total ?? 0 }
