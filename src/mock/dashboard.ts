@@ -1,5 +1,11 @@
 import { apps, apiGroups, apis, dashboardActivities, remoteCallLogs, singleAppAuthorizations, smartDocImportLogs } from './base';
 import { success, wait } from '@/utils/mock';
+import type { AuthServiceSettings } from '@/types/business';
+
+let authServiceSettings: AuthServiceSettings = {
+  mode: 'ENABLED',
+  updated_at: '2026-04-29 10:30:00'
+};
 
 export async function fetchDashboard() {
   return wait(success({
@@ -11,10 +17,20 @@ export async function fetchDashboard() {
       smartdoc_import_total: smartDocImportLogs.length,
       today_call_total: remoteCallLogs.length
     },
+    auth_service_settings: authServiceSettings,
     imports: dashboardActivities.imports,
     auths: dashboardActivities.auths,
     calls: dashboardActivities.calls
   }));
+}
+
+export async function updateAuthServiceSettings(payload: { mode: AuthServiceSettings['mode'] }) {
+  authServiceSettings = {
+    mode: payload.mode,
+    updated_at: '2026-04-29 11:00:00'
+  };
+
+  return wait(success(authServiceSettings, '鉴权服务设置更新成功'));
 }
 
 /* ===================== 拓扑图数据接口 ===================== */
