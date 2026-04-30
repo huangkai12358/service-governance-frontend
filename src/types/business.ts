@@ -230,7 +230,9 @@ export interface ReverseAuthorizedTargetDetail {
 export interface AuthConfigLogItem {
   auth_log_id: bigint;
   caller_app_code: string;
+  caller_app_name: string;
   callee_app_code: string;
+  callee_app_name: string;
   api_name: string;
   api_path: string;
   operation_type: '新增' | '撤销';
@@ -240,6 +242,7 @@ export interface AuthConfigLogItem {
 export interface SmartDocImportLogItem {
   api_version_id: bigint;
   app_code: string;
+  app_name: string;
   version: string;
   file_name: string;
   file_path: string;
@@ -250,7 +253,9 @@ export interface SmartDocImportLogItem {
 export interface RemoteCallLogItem {
   call_decision_log_id: bigint;
   caller_app_code: string;
+  caller_app_name: string;
   callee_app_code: string;
+  callee_app_name: string;
   result: DecisionResult;
   decision_reason: string;
   log_time: string;

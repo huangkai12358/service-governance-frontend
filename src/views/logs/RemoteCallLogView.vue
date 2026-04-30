@@ -7,7 +7,9 @@
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
       <el-form-item label="日志 ID"><el-input v-model="query.call_decision_log_id" clearable /></el-form-item>
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
+      <el-form-item label="调用方应用名称"><el-input v-model="query.caller_app_name" clearable /></el-form-item>
       <el-form-item label="被调用方应用编码"><el-input v-model="query.callee_app_code" clearable /></el-form-item>
+      <el-form-item label="被调用方应用名称"><el-input v-model="query.callee_app_name" clearable /></el-form-item>
       <el-form-item label="结果">
         <el-select v-model="query.result" clearable style="width:160px">
           <el-option label="SUCCESS" value="SUCCESS" />
@@ -28,11 +30,13 @@
     </PageSearch>
     <el-card class="panel-card" shadow="never">
       <el-table :data="pagedList" border>
-        <el-table-column label="日志 ID" width="180">
+        <el-table-column label="日志 ID" width="80">
           <template #default="{ row }">{{ row.call_decision_log_id.toString() }}</template>
         </el-table-column>
         <el-table-column prop="caller_app_code" label="调用方应用编码" width="180" />
+        <el-table-column prop="caller_app_name" label="调用方应用名称" width="180" />
         <el-table-column prop="callee_app_code" label="被调用方应用编码" width="180" />
+        <el-table-column prop="callee_app_name" label="被调用方应用名称" width="180" />
         <el-table-column label="结果" width="120">
           <template #default="{ row }"><StatusTag :value="row.result" /></template>
         </el-table-column>
@@ -62,7 +66,9 @@ import { fetchRemoteCallLogs } from '@/mock/logs';
 const query = reactive({
   call_decision_log_id: '',
   caller_app_code: '',
+  caller_app_name: '',
   callee_app_code: '',
+  callee_app_name: '',
   result: '',
   time_range: [] as string[]
 });
@@ -79,7 +85,15 @@ async function loadData() {
 }
 
 function resetQuery() {
-  Object.assign(query, { call_decision_log_id: '', caller_app_code: '', callee_app_code: '', result: '', time_range: [] });
+  Object.assign(query, {
+    call_decision_log_id: '',
+    caller_app_code: '',
+    caller_app_name: '',
+    callee_app_code: '',
+    callee_app_name: '',
+    result: '',
+    time_range: []
+  });
   pagination.page = 1;
   loadData();
 }
