@@ -4,7 +4,9 @@ import { success, wait } from '@/utils/mock';
 export async function fetchRemoteCallLogs(query: {
   call_decision_log_id?: string;
   caller_app_code?: string;
+  caller_app_name?: string;
   callee_app_code?: string;
+  callee_app_name?: string;
   result?: string;
   time_range?: string[];
 }) {
@@ -12,7 +14,9 @@ export async function fetchRemoteCallLogs(query: {
     const inTime = !query.time_range?.length || (item.log_time >= query.time_range[0] && item.log_time <= query.time_range[1]);
     return (!query.call_decision_log_id || String(item.call_decision_log_id).includes(query.call_decision_log_id)) &&
       (!query.caller_app_code || item.caller_app_code.includes(query.caller_app_code)) &&
+      (!query.caller_app_name || item.caller_app_name.includes(query.caller_app_name)) &&
       (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code)) &&
+      (!query.callee_app_name || item.callee_app_name.includes(query.callee_app_name)) &&
       (!query.result || item.result === query.result) &&
       inTime;
   }).sort((a, b) => b.log_time.localeCompare(a.log_time));

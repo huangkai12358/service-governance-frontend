@@ -7,7 +7,9 @@
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
       <el-form-item label="日志 ID"><el-input v-model="query.auth_log_id" clearable /></el-form-item>
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
+      <el-form-item label="调用方应用名称"><el-input v-model="query.caller_app_name" clearable /></el-form-item>
       <el-form-item label="被调用方应用编码"><el-input v-model="query.callee_app_code" clearable /></el-form-item>
+      <el-form-item label="被调用方应用名称"><el-input v-model="query.callee_app_name" clearable /></el-form-item>
       <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
       <el-form-item label="API 路径"><el-input v-model="query.api_path" clearable /></el-form-item>
       <el-form-item label="操作类型">
@@ -29,11 +31,13 @@
     </PageSearch>
     <el-card class="panel-card" shadow="never">
       <el-table :data="pagedList" border>
-        <el-table-column label="日志 ID" width="180">
+        <el-table-column label="日志 ID" width="80">
           <template #default="{ row }">{{ row.auth_log_id.toString() }}</template>
         </el-table-column>
         <el-table-column prop="caller_app_code" label="调用方应用编码" width="180" />
+        <el-table-column prop="caller_app_name" label="调用方应用名称" width="180" />
         <el-table-column prop="callee_app_code" label="被调用方应用编码" width="180" />
+        <el-table-column prop="callee_app_name" label="被调用方应用名称" width="180" />
         <el-table-column prop="api_name" label="API 名称" min-width="160" />
         <el-table-column prop="api_path" label="API 路径" min-width="240" />
         <el-table-column label="操作类型" width="100">
@@ -66,7 +70,9 @@ import { fetchAuthConfigLogs } from '@/mock/history';
 const query = reactive({
   auth_log_id: '',
   caller_app_code: '',
+  caller_app_name: '',
   callee_app_code: '',
+  callee_app_name: '',
   api_name: '',
   api_path: '',
   operation_type: '',
@@ -85,7 +91,17 @@ async function loadData() {
 }
 
 function resetQuery() {
-  Object.assign(query, { auth_log_id: '', caller_app_code: '', callee_app_code: '', api_name: '', api_path: '', operation_type: '', time_range: [] });
+  Object.assign(query, {
+    auth_log_id: '',
+    caller_app_code: '',
+    caller_app_name: '',
+    callee_app_code: '',
+    callee_app_name: '',
+    api_name: '',
+    api_path: '',
+    operation_type: '',
+    time_range: []
+  });
   pagination.page = 1;
   loadData();
 }

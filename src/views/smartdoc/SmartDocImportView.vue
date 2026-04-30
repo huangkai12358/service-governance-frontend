@@ -45,7 +45,7 @@
       <el-tabs v-model="tab">
         <el-tab-pane :label="`新增 API（${diff.additions.length}）`" name="add">
           <div class="diff-grid diff-scroll">
-            <DiffCard v-for="item in diff.additions" :key="item.id" type="added" :title="item.api_name" :subtitle="item.api_path" tag-text="新增API">
+            <DiffCard v-for="item in diff.additions" :key="item.id" type="added" :title="item.api_name" :subtitle="item.api_path" tag-text="新增 API">
               <p>请求方法：{{ item.api_method }}</p>
               <p>描述：{{ item.api_description }}</p>
             </DiffCard>

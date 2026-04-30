@@ -21,16 +21,26 @@
       </div>
       <template v-if="list.length">
         <el-table :data="pagedList" border>
-          <el-table-column prop="caller_app_code" label="调用方应用编码" min-width="170" />
-          <el-table-column prop="caller_app_name" label="调用方应用名称" min-width="170" />
-          <el-table-column prop="callee_app_code" label="被调用方应用编码" min-width="170" />
-          <el-table-column prop="callee_app_name" label="被调用方应用名称" min-width="170" />
-          <el-table-column label="授权 API 数" align="center">
+          <el-table-column prop="caller_app_code" label="调用方应用编码" min-width="150" />
+          <el-table-column prop="caller_app_name" label="调用方应用名称" min-width="120" />
+          <el-table-column prop="callee_app_code" label="被调用方应用编码" min-width="150" />
+          <el-table-column prop="callee_app_name" label="被调用方应用名称" min-width="120" />
+          <el-table-column label="被调用方应用当前版本号" align="center">
             <template #default="{ row }">
-              {{ row.api_paths.length }}
+              {{ getCurrentVersion(row) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="140">
+          <el-table-column label="授权 API 数（当前）" align="center">
+            <template #default="{ row }">
+              {{ splitAuthorizedApiRows(row).current.length }}
+            </template>
+          </el-table-column>
+          <el-table-column label="授权 API 数（废弃）" align="center">
+            <template #default="{ row }">
+              {{ splitAuthorizedApiRows(row).legacy.length }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="140" align="center" header-align="center">
             <template #default="{ row }">
               <el-button link type="primary" @click="openApiDetail(row)">详情</el-button>
               <el-button link type="primary" @click="openEditor(row.id)">授权配置</el-button>
@@ -109,13 +119,26 @@
         <div class="auth-editor">
           <div class="editor-column">
             <h3 class="section-title">API 列表</h3>
-            <el-input v-model="apiKeyword" clearable placeholder="搜索 API 名称或请求路径" />
-            <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
-              <el-checkbox v-for="item in filteredApis" :key="item.id" :label="item.id">
-                <span class="option-title">{{ item.api_name }}</span>
-                <span class="option-subtitle">{{ item.api_path }}</span>
-              </el-checkbox>
-            </el-checkbox-group>
+            <el-input v-model="apiKeyword" clearable :placeholder="apiKeywordPlaceholder" />
+            <el-tabs v-model="editorTab">
+              <el-tab-pane :label="`当前版本（${filteredCurrentApis.length}）`" name="current">
+                <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
+                  <el-checkbox v-for="item in filteredCurrentApis" :key="item.id" :label="item.id">
+                    <span class="option-title">{{ item.api_name }}</span>
+                    <span class="option-subtitle">{{ item.api_path }}</span>
+                  </el-checkbox>
+                </el-checkbox-group>
+              </el-tab-pane>
+              <el-tab-pane :label="`兼容旧版本（${filteredLegacyApis.length}）`" name="legacy">
+                <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
+                  <el-checkbox v-for="item in filteredLegacyApis" :key="item.id" :label="item.id">
+                    <span class="option-title">{{ item.api_name }}</span>
+                    <span class="option-subtitle">{{ item.api_path }}</span>
+                    <span class="option-meta">版本号：{{ item.version }}</span>
+                  </el-checkbox>
+                </el-checkbox-group>
+              </el-tab-pane>
+            </el-tabs>
           </div>
           <div class="editor-column">
             <h3 class="section-title">变更预览</h3>
@@ -157,15 +180,29 @@
         <el-descriptions v-if="currentApiDetail" :column="1" border>
           <el-descriptions-item label="调用方应用">{{ currentApiDetail.caller_app_name }}（{{ currentApiDetail.caller_app_code }}）</el-descriptions-item>
           <el-descriptions-item label="被调用方应用">{{ currentApiDetail.callee_app_name }}（{{ currentApiDetail.callee_app_code }}）</el-descriptions-item>
-          <el-descriptions-item label="已授权数量">{{ currentApiDetail.api_paths.length }} 个</el-descriptions-item>
+          <el-descriptions-item label="被调用方应用当前版本号">{{ currentDetailVersion }}</el-descriptions-item>
+          <el-descriptions-item label="已授权 API 数量">{{ currentApiDetail.api_paths.length }} 个</el-descriptions-item>
         </el-descriptions>
 
         <el-input v-model="apiDetailKeyword" clearable placeholder="搜索请求路径" />
 
-        <el-table :data="pagedApiDetailRows" border>
-          <el-table-column type="index" label="#" width="60" />
-          <el-table-column prop="api_path" label="请求路径" min-width="480" show-overflow-tooltip />
-        </el-table>
+        <el-tabs v-model="apiDetailTab">
+          <el-tab-pane :label="`当前版本（${filteredCurrentApiDetailRows.length}）`" name="current">
+            <el-table :data="pagedCurrentApiDetailRows" border>
+              <el-table-column type="index" label="#" width="60" />
+              <el-table-column prop="api_name" label="API 名称" min-width="180" />
+              <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane :label="`兼容旧版本（${filteredLegacyApiDetailRows.length}）`" name="legacy">
+            <el-table :data="pagedLegacyApiDetailRows" border>
+              <el-table-column type="index" label="#" width="60" />
+              <el-table-column prop="api_name" label="API 名称" min-width="180" />
+              <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+              <el-table-column prop="version" label="版本号" width="120" />              
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
 
         <div class="pagination-wrap">
           <el-pagination
@@ -173,7 +210,7 @@
             v-model:page-size="apiDetailPagination.pageSize"
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next"
-            :total="filteredApiDetailRows.length"
+            :total="apiDetailTab === 'current' ? filteredCurrentApiDetailRows.length : filteredLegacyApiDetailRows.length"
             @size-change="handleApiDetailPageSizeChange"
           />
         </div>
@@ -186,6 +223,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
+import { apis, apps } from '@/mock/base';
 import {
   calcAuthorizationDelta,
   fetchExistingSingleAppAuthorization,
@@ -209,15 +247,21 @@ const originalApiIds = ref<number[]>([]);
 const checkedApiIds = ref<number[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
 const apiKeyword = ref('');
+const editorTab = ref('current');
 const form = reactive({ caller_app_code: '', callee_app_code: '' });
 const apiDetailVisible = ref(false);
 const currentApiDetail = ref<SingleAppAuthorization | null>(null);
 const apiDetailKeyword = ref('');
+const apiDetailTab = ref('current');
 const apiDetailPagination = reactive({ page: 1, pageSize: 10 });
 
-const delta = computed(() => calcAuthorizationDelta(originalApiIds.value, checkedApiIds.value));
+const allEditorApis = computed(() => [
+  ...(editorData.value?.current_apis || []),
+  ...(editorData.value?.legacy_apis || [])
+]);
+const delta = computed(() => calcAuthorizationDelta(originalApiIds.value, checkedApiIds.value, allEditorApis.value));
 const addedApiDetails = computed(() => {
-  const source = editorData.value?.apis || [];
+  const source = allEditorApis.value;
   return delta.value.added_api_paths.map((path) => {
     const target = source.find((item) => item.api_path === path);
     return {
@@ -227,7 +271,7 @@ const addedApiDetails = computed(() => {
   });
 });
 const revokedApiDetails = computed(() => {
-  const source = editorData.value?.apis || [];
+  const source = allEditorApis.value;
   return delta.value.revoked_api_paths.map((path) => {
     const target = source.find((item) => item.api_path === path);
     return {
@@ -240,11 +284,19 @@ const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
 });
-const filteredApis = computed(() => {
+const filteredCurrentApis = computed(() => {
   const keyword = apiKeyword.value.trim();
-  const source = editorData.value?.apis || [];
+  const source = editorData.value?.current_apis || [];
   return source.filter((api) => !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword));
 });
+const filteredLegacyApis = computed(() => {
+  const keyword = apiKeyword.value.trim();
+  const source = editorData.value?.legacy_apis || [];
+  return source.filter((api) => !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword) || api.version.includes(keyword));
+});
+const apiKeywordPlaceholder = computed(() =>
+  editorTab.value === 'legacy' ? '搜索 API 名称、请求路径或版本号' : '搜索 API 名称或请求路径'
+);
 const callerAppOptions = computed(() =>
   appOptions.value.filter((item) => item.app_code !== form.callee_app_code)
 );
@@ -255,16 +307,24 @@ const hasQueryCondition = computed(() => Boolean(query.caller_app_code || query.
 const emptyDescription = computed(() =>
   hasQueryCondition.value ? '未找到匹配的授权关系' : '当前没有授权关系，可点击“新增 / 修改授权”开始配置'
 );
-const filteredApiDetailRows = computed(() => {
+const currentApiDetailRows = computed(() => splitAuthorizedApiRows(currentApiDetail.value).current);
+const legacyApiDetailRows = computed(() => splitAuthorizedApiRows(currentApiDetail.value).legacy);
+const filteredCurrentApiDetailRows = computed(() => {
   const keyword = apiDetailKeyword.value.trim();
-  const source = currentApiDetail.value?.api_paths || [];
-  return source
-    .filter((path) => !keyword || path.includes(keyword))
-    .map((api_path) => ({ api_path }));
+  return currentApiDetailRows.value.filter((item) => !keyword || item.api_name.includes(keyword) || item.api_path.includes(keyword));
 });
-const pagedApiDetailRows = computed(() => {
+const filteredLegacyApiDetailRows = computed(() => {
+  const keyword = apiDetailKeyword.value.trim();
+  return legacyApiDetailRows.value.filter((item) => !keyword || item.api_name.includes(keyword) || item.api_path.includes(keyword));
+});
+const currentDetailVersion = computed(() => getCurrentVersion(currentApiDetail.value));
+const pagedCurrentApiDetailRows = computed(() => {
   const start = (apiDetailPagination.page - 1) * apiDetailPagination.pageSize;
-  return filteredApiDetailRows.value.slice(start, start + apiDetailPagination.pageSize);
+  return filteredCurrentApiDetailRows.value.slice(start, start + apiDetailPagination.pageSize);
+});
+const pagedLegacyApiDetailRows = computed(() => {
+  const start = (apiDetailPagination.page - 1) * apiDetailPagination.pageSize;
+  return filteredLegacyApiDetailRows.value.slice(start, start + apiDetailPagination.pageSize);
 });
 
 async function loadData() {
@@ -295,12 +355,14 @@ function resetEditorState() {
   apiKeyword.value = '';
   editingId.value = undefined;
   lockAppPair.value = false;
+  editorTab.value = 'current';
 }
 
 function openApiDetail(row: SingleAppAuthorization) {
   currentApiDetail.value = row;
   apiDetailKeyword.value = '';
   apiDetailPagination.page = 1;
+  apiDetailTab.value = splitAuthorizedApiRows(row).current.length ? 'current' : 'legacy';
   apiDetailVisible.value = true;
 }
 
@@ -310,6 +372,7 @@ function applyEditorData(data: AuthorizationEditorData, checkedIds?: number[]) {
   originalApiIds.value = [...nextCheckedIds];
   checkedApiIds.value = [...nextCheckedIds];
   apiKeyword.value = '';
+  editorTab.value = data.current_apis.length ? 'current' : 'legacy';
 }
 
 async function openCreateDialog() {
@@ -356,7 +419,7 @@ async function handleCallerChange() {
 async function syncPairAuthorization() {
   if (!form.caller_app_code || !form.callee_app_code) {
     editingId.value = undefined;
-    applyEditorData({ apis: [], checked_api_ids: [] }, []);
+    applyEditorData({ current_apis: [], legacy_apis: [], checked_api_ids: [] }, []);
     return;
   }
 
@@ -433,6 +496,37 @@ async function submitEdit() {
 }
 
 onMounted(loadData);
+
+function splitAuthorizedApiRows(record: SingleAppAuthorization | null) {
+  if (!record) {
+    return { current: [] as Array<{ api_name: string; api_path: string; version: string }>, legacy: [] as Array<{ api_name: string; api_path: string; version: string }> };
+  }
+  const app = apps.find((item) => item.app_code === record.callee_app_code);
+  const currentVersionApis = apis.filter((item) =>
+    item.app_code === record.callee_app_code &&
+    item.is_deleted === 0 &&
+    (!app?.current_version || item.version === app.current_version)
+  );
+  const currentPathSet = new Set(currentVersionApis.map((item) => item.api_path));
+  const toRow = (apiPath: string) => {
+    const matched = apis.find((item) => item.app_code === record.callee_app_code && item.api_path === apiPath)
+      || apis.find((item) => item.api_path === apiPath);
+    return {
+      api_name: matched?.api_name || '兼容旧版本 API',
+      api_path: apiPath,
+      version: matched?.version || '-'
+    };
+  };
+  return {
+    current: record.api_paths.filter((path) => currentPathSet.has(path)).map(toRow),
+    legacy: record.api_paths.filter((path) => !currentPathSet.has(path)).map(toRow)
+  };
+}
+
+function getCurrentVersion(record: SingleAppAuthorization | null) {
+  if (!record) return '-';
+  return apps.find((item) => item.app_code === record.callee_app_code)?.current_version || '-';
+}
 </script>
 
 <style scoped>
@@ -561,6 +655,11 @@ onMounted(loadData);
   color: var(--sg-subtext);
   font-size: 12px;
   word-break: break-all;
+}
+
+.option-meta {
+  color: var(--sg-subtext);
+  font-size: 12px;
 }
 
 .change-summary {
