@@ -22,12 +22,41 @@ interface ReverseAuthorizationSavePayload {
   original_app_codes: string[];
 }
 
+function buildApiOptionFromPath(apiPath: string, appCode: string, fallbackId: number) {
+  const matched = apis.find((item) => item.app_code === appCode && item.api_path === apiPath)
+    || apis.find((item) => item.api_path === apiPath);
+  return {
+    id: matched?.id ?? fallbackId,
+    api_name: matched?.api_name ?? '兼容旧版本 API',
+    api_path: apiPath,
+    app_code: appCode,
+    version: matched?.version ?? '-'
+  };
+}
+
+function getCurrentVersionApis(calleeAppCode: string) {
+  const app = apps.find((item) => item.app_code === calleeAppCode);
+  return apis.filter((item) =>
+    item.app_code === calleeAppCode &&
+    item.is_deleted === 0 &&
+    (!app?.current_version || item.version === app.current_version)
+  );
+}
+
 function buildAuthorizationEditorData(calleeAppCode: string, checkedApiPaths: string[] = []): AuthorizationEditorData {
-  const calleeApis = apis.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
+  const currentApis = getCurrentVersionApis(calleeAppCode);
+  const currentPathSet = new Set(currentApis.map((item) => item.api_path));
+  const legacyApis = checkedApiPaths
+    .filter((path) => !currentPathSet.has(path))
+    .map((path, index) => buildApiOptionFromPath(path, calleeAppCode, -(index + 1)));
 
   return {
-    apis: calleeApis.map((item) => ({ id: item.id, api_name: item.api_name, api_path: item.api_path, app_code: item.app_code })),
-    checked_api_ids: calleeApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id)
+    current_apis: currentApis.map((item) => ({ id: item.id, api_name: item.api_name, api_path: item.api_path, app_code: item.app_code, version: item.version })),
+    legacy_apis: legacyApis,
+    checked_api_ids: [
+      ...currentApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id),
+      ...legacyApis.map((item) => item.id)
+    ]
   };
 }
 
@@ -35,10 +64,6 @@ function buildAppOptions() {
   return apps
     .filter((item) => item.is_deleted === 0)
     .map((item) => ({ app_code: item.app_code, app_name: item.app_name }));
-}
-
-function getApiPathsByIds(apiIds: number[]) {
-  return apis.filter((item) => apiIds.includes(item.id)).map((item) => item.api_path);
 }
 
 export async function fetchSingleAppAuthList(query: { caller_app_code?: string; caller_app_name?: string; callee_app_code?: string; callee_app_name?: string }) {
@@ -87,17 +112,23 @@ export async function fetchExistingSingleAppAuthorization(callerAppCode: string,
   return wait(success(current));
 }
 
-export function calcAuthorizationDelta(originalApiIds: number[], nextApiIds: number[]): AuthorizationDelta {
-  const originalPaths = apis.filter((item) => originalApiIds.includes(item.id)).map((item) => item.api_path);
-  const nextPaths = apis.filter((item) => nextApiIds.includes(item.id)).map((item) => item.api_path);
+export function calcAuthorizationDelta(originalApiIds: number[], nextApiIds: number[], sourceApis: Array<{ id: number; api_path: string }>): AuthorizationDelta {
+  const originalApiPaths = originalApiIds
+    .map((id) => sourceApis.find((item) => item.id === id)?.api_path)
+    .filter((item): item is string => Boolean(item));
+  const nextApiPaths = nextApiIds
+    .map((id) => sourceApis.find((item) => item.id === id)?.api_path)
+    .filter((item): item is string => Boolean(item));
   return {
-    added_api_paths: nextPaths.filter((item) => !originalPaths.includes(item)),
-    revoked_api_paths: originalPaths.filter((item) => !nextPaths.includes(item))
+    added_api_paths: nextApiPaths.filter((item) => !originalApiPaths.includes(item)),
+    revoked_api_paths: originalApiPaths.filter((item) => !nextApiPaths.includes(item))
   };
 }
 
 export async function saveSingleAppAuthorization(payload: SingleAppAuthorizationEditorPayload & { id?: number }) {
-  const selectedApiPaths = getApiPathsByIds(payload.checked_api_ids);
+  const current = payload.id ? singleAppAuthorizations.find((item) => item.id === payload.id) : undefined;
+  const data = buildAuthorizationEditorData(payload.callee_app_code, current?.api_paths || []);
+  const selectedApiPaths = getApiPathsFromEditorData(data, payload.checked_api_ids);
 
   // 编辑场景下允许撤销到空，按约定直接删除整条授权关系。
   if (payload.id) {
@@ -325,4 +356,19 @@ export async function saveReverseAuthorization(payload: ReverseAuthorizationSave
   });
 
   return wait(success(true, '反向授权保存成功'));
+}
+function getApiPathsByIds(apiIds: number[], calleeAppCode?: string) {
+  const currentPaths = apis.filter((item) => apiIds.includes(item.id)).map((item) => item.api_path);
+  const legacyPaths = apiIds
+    .filter((id) => id < 0)
+    .map((id) => buildApiOptionFromPath('', calleeAppCode || '', id))
+    .filter(() => false);
+  return [...currentPaths, ...legacyPaths];
+}
+
+function getApiPathsFromEditorData(data: AuthorizationEditorData, apiIds: number[]) {
+  const source = [...data.current_apis, ...data.legacy_apis];
+  return apiIds
+    .map((id) => source.find((item) => item.id === id)?.api_path)
+    .filter((item): item is string => Boolean(item));
 }

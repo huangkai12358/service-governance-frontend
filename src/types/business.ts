@@ -160,11 +160,19 @@ export interface AppGroupAuthorization {
 }
 
 export interface AuthorizationEditorData {
-  apis: Array<{
+  current_apis: Array<{
     id: number;
     api_name: string;
     api_path: string;
     app_code: string;
+    version: string;
+  }>;
+  legacy_apis: Array<{
+    id: number;
+    api_name: string;
+    api_path: string;
+    app_code: string;
+    version: string;
   }>;
   checked_api_ids: number[];
 }
