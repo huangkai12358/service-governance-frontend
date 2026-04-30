@@ -19,19 +19,18 @@
         </div>
       </div>
       <el-table :data="tableData.list" border>
-        <el-table-column prop="app_code" label="应用编码" width="160" />
-        <el-table-column prop="app_name" label="应用名称" width="140" />
-        <el-table-column prop="api_name" label="API 名称" min-width="160" />
+        <el-table-column prop="app_code" label="应用编码" width="130" />
+        <el-table-column prop="app_name" label="应用名称" width="120" />
+        <el-table-column prop="api_name" label="API 名称" min-width="130" />
         <el-table-column prop="api_path" label="请求路径" min-width="240" />
-        <el-table-column prop="api_method" label="请求方法" width="110" />
-        <el-table-column prop="version" label="版本号" width="120" />
+        <el-table-column prop="api_method" label="请求方法" width="90" />
+        <el-table-column prop="version" label="版本号" width="90" />
         <el-table-column prop="create_time" label="创建时间" width="180" />
         <el-table-column prop="update_time" label="更新时间" width="180" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="120">
           <template #default="{ row }">
             <el-button link type="primary" @click="showDetail(row)">详情</el-button>
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -95,9 +94,9 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { deleteApi, fetchApiList, fetchApiOptions, saveApi } from '@/mock/api';
+import { fetchApiList, fetchApiOptions, saveApi } from '@/mock/api';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', version: '' });
 const tableData = reactive({ list: [] as any[], total: 0 });
@@ -185,12 +184,6 @@ async function submitEdit() {
   const { message } = await saveApi();
   ElMessage.success(message);
   editVisible.value = false;
-}
-
-async function handleDelete(row: any) {
-  await ElMessageBox.confirm(`确认删除 API「${row.api_name}」吗？`, '删除确认', { type: 'warning' });
-  const { message } = await deleteApi();
-  ElMessage.success(message);
 }
 
 onMounted(async () => {
