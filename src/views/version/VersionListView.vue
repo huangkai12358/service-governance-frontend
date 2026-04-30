@@ -36,7 +36,13 @@
       </div>
     </el-card>
 
-    <el-drawer v-model="detailVisible" title="版本详情" size="760px">
+    <el-drawer v-model="detailVisible" size="760px">
+      <template #header>
+        <div class="drawer-header">
+          <span>版本详情</span>
+          <el-button type="primary" @click="exportDetailToExcel" :disabled="!detail">导出为 Excel</el-button>
+        </div>
+      </template>
       <template v-if="detail">
         <el-descriptions :column="2" border class="detail-summary">
           <el-descriptions-item label="应用编码">{{ detail.version.app_code }}</el-descriptions-item>
@@ -48,11 +54,21 @@
         </el-descriptions>
 
         <div class="section-title">包含的 API</div>
-        <el-table :data="detail.apis" border>
+        <el-table :data="pagedDetailApis" border>
           <el-table-column prop="api_name" label="API 名称" min-width="180" />
           <el-table-column prop="api_path" label="请求路径" min-width="280" show-overflow-tooltip />
           <el-table-column prop="api_method" label="请求方法" width="110" />
         </el-table>
+        <div class="drawer-pagination">
+          <el-pagination
+            v-model:current-page="detailQuery.page"
+            v-model:page-size="detailQuery.pageSize"
+            :page-sizes="[5, 10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            :total="detail.apis.length"
+            @size-change="handleDetailPageSizeChange"
+          />
+        </div>
       </template>
     </el-drawer>
   </div>
@@ -68,10 +84,17 @@ const list = ref<any[]>([]);
 const detail = ref<any>(null);
 const detailVisible = ref(false);
 const pagination = reactive({ page: 1, pageSize: 10 });
+const detailQuery = reactive({ page: 1, pageSize: 10 });
 
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
+});
+
+const pagedDetailApis = computed(() => {
+  if (!detail.value) return [];
+  const start = (detailQuery.page - 1) * detailQuery.pageSize;
+  return detail.value.apis.slice(start, start + detailQuery.pageSize);
 });
 
 async function loadData() {
@@ -89,16 +112,69 @@ function handlePageSizeChange() {
   pagination.page = 1;
 }
 
+function handleDetailPageSizeChange() {
+  detailQuery.page = 1;
+}
+
 async function showDetail(id: number) {
   const { data } = await fetchVersionDetail(id);
   detail.value = data;
+  detailQuery.page = 1;
+  detailQuery.pageSize = 10;
   detailVisible.value = true;
+}
+
+// 中文注释：导出版本详情为 CSV 文件，包含版本基本信息和 API 列表
+function exportDetailToExcel() {
+  if (!detail.value) return;
+  const { version, apis } = detail.value;
+
+  const headers = ['应用编码', '应用名称', '版本号', '导入时间', 'API 名称', '请求路径', '请求方法'];
+  const rows = apis.length > 0
+    ? apis.map((item: any) => [
+        version.app_code,
+        version.app_name,
+        version.version,
+        version.create_time,
+        item.api_name,
+        item.api_path,
+        item.api_method
+      ])
+    : [[version.app_code, version.app_name, version.version, version.create_time, '', '', '']];
+
+  const escapeCell = (value: unknown) => {
+    const text = String(value ?? '').replace(/"/g, '""');
+    return `"${text}"`;
+  };
+
+  const csvContent = [
+    headers.map(escapeCell).join(','),
+    ...rows.map((row: string[]) => row.map(escapeCell).join(','))
+  ].join('\n');
+
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${version.app_code}-version-${version.version}-export.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 onMounted(loadData);
 </script>
 
 <style scoped>
+.drawer-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .detail-summary {
   margin-bottom: 20px;
 }
@@ -108,5 +184,11 @@ onMounted(loadData);
   color: var(--sg-text);
   font-size: 15px;
   font-weight: 700;
+}
+
+.drawer-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>
