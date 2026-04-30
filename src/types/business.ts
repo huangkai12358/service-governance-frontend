@@ -1,6 +1,6 @@
 ﻿export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export type DecisionResult = 'SUCCESS' | 'FAIL' | 'BYPASS';
-export type ChangeType = '新增API' | '修改API' | '废弃API';
+export type ChangeType = '新增 API' | '修改 API' | '废弃 API';
 
 export interface UserInfo {
   username: string;

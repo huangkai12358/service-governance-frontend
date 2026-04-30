@@ -38,12 +38,6 @@ const routes = [
         meta: { title: 'SmartDoc 导入' }
       },
       {
-        path: 'api/version-history',
-        name: 'ApiVersionHistory',
-        component: () => import('@/views/version/VersionListView.vue'),
-        meta: { title: '历史版本管理' }
-      },
-      {
         path: 'app/list',
         name: 'AppList',
         component: () => import('@/views/app/AppListView.vue'),

@@ -22,8 +22,7 @@ export const menus: MenuItem[] = [
     icon: Monitor,
     children: [
       { title: 'API 列表', path: '/api/list' },
-      { title: 'SmartDoc 导入', path: '/api/smartdoc' },
-      { title: '历史版本管理', path: '/api/version-history' }
+      { title: 'SmartDoc 导入', path: '/api/smartdoc' }
     ]
   },
   {

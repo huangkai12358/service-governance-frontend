@@ -15,7 +15,7 @@
     <el-card class="panel-card" shadow="never">
       <div class="table-toolbar">
         <div class="right-actions">
-          <el-button type="primary" @click="openCreate">新增API</el-button>
+          <el-button type="primary" @click="openCreate">新增 API</el-button>
         </div>
       </div>
       <el-table :data="tableData.list" border>
@@ -48,7 +48,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="createVisible" title="新增API" width="680px">
+    <el-dialog v-model="createVisible" title="新增 API" width="680px">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="120px">
         <el-form-item label="所属应用编码" prop="app_code">
           <el-select v-model="createForm.app_code" style="width:100%" filterable>
