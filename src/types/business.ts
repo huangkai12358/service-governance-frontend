@@ -10,7 +10,6 @@ export interface UserInfo {
 export interface OverviewStats {
   api_total: number;
   app_total: number;
-  api_group_total: number;
   auth_relation_total: number;
   smartdoc_import_total: number;
   today_call_total: number;
@@ -68,21 +67,6 @@ export interface ApiItem {
   api_version_id: bigint;
   version: string;
   api_description: string;
-  api_group_ids: number[];
-  api_group_names: string[];
-  create_time: string;
-  update_time: string;
-  is_deleted: 0 | 1;
-}
-
-export interface ApiGroupItem {
-  id: number;
-  api_group_name: string;
-  api_group_description: string;
-  app_code: string;
-  app_name: string;
-  api_ids: number[];
-  api_paths: string[];
   create_time: string;
   update_time: string;
   is_deleted: 0 | 1;
@@ -161,7 +145,6 @@ export interface SingleAppAuthorization {
   callee_app_code: string;
   callee_app_name: string;
   api_paths: string[];
-  api_group_ids: number[];
 }
 
 export interface AuthorizationAppOption {
@@ -183,14 +166,7 @@ export interface AuthorizationEditorData {
     api_path: string;
     app_code: string;
   }>;
-  api_groups: Array<{
-    id: number;
-    api_group_name: string;
-    app_code: string;
-    api_ids: number[];
-  }>;
   checked_api_ids: number[];
-  checked_group_ids: number[];
 }
 
 export interface SingleAppAuthorizationEditorPayload {

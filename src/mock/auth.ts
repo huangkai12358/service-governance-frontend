@@ -1,4 +1,4 @@
-import { apiGroups, apis, apps, singleAppAuthorizations } from './base';
+import { apis, apps, singleAppAuthorizations } from './base';
 import { success, wait } from '@/utils/mock';
 import { getLatestImportedAdditions } from './smartdoc';
 import type {
@@ -24,15 +24,10 @@ interface ReverseAuthorizationSavePayload {
 
 function buildAuthorizationEditorData(calleeAppCode: string, checkedApiPaths: string[] = []): AuthorizationEditorData {
   const calleeApis = apis.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
-  const calleeGroups = apiGroups.filter((item) => item.app_code === calleeAppCode && item.is_deleted === 0);
 
   return {
     apis: calleeApis.map((item) => ({ id: item.id, api_name: item.api_name, api_path: item.api_path, app_code: item.app_code })),
-    api_groups: calleeGroups.map((item) => ({ id: item.id, api_group_name: item.api_group_name, app_code: item.app_code, api_ids: item.api_ids })),
-    checked_api_ids: calleeApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id),
-    checked_group_ids: calleeGroups
-      .filter((group) => group.api_ids.length > 0 && group.api_ids.every((id) => calleeApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id).includes(id)))
-      .map((group) => group.id)
+    checked_api_ids: calleeApis.filter((item) => checkedApiPaths.includes(item.api_path)).map((item) => item.id)
   };
 }
 
@@ -46,15 +41,13 @@ function getApiPathsByIds(apiIds: number[]) {
   return apis.filter((item) => apiIds.includes(item.id)).map((item) => item.api_path);
 }
 
-function getApiGroupIdsByIds(apiIds: number[]) {
-  return [...new Set(apis.filter((item) => apiIds.includes(item.id)).flatMap((item) => item.api_group_ids))];
-}
-
-export async function fetchSingleAppAuthList(query: { caller_app_code?: string; callee_app_code?: string }) {
+export async function fetchSingleAppAuthList(query: { caller_app_code?: string; caller_app_name?: string; callee_app_code?: string; callee_app_name?: string }) {
   const list = singleAppAuthorizations.filter((item) => {
     return item.api_paths.length > 0 &&
       (!query.caller_app_code || item.caller_app_code.includes(query.caller_app_code)) &&
-      (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code));
+      (!query.caller_app_name || item.caller_app_name.includes(query.caller_app_name)) &&
+      (!query.callee_app_code || item.callee_app_code.includes(query.callee_app_code)) &&
+      (!query.callee_app_name || item.callee_app_name.includes(query.callee_app_name));
   });
   return wait(success(list));
 }
@@ -74,14 +67,24 @@ export async function fetchSingleAppAuthorizationCreator() {
   const appOptions = buildAppOptions();
   const dialogData: SingleAppAuthorizationDialogData = {
     app_options: appOptions,
-    data: buildAuthorizationEditorData(appOptions[0]?.app_code || '')
+    data: buildAuthorizationEditorData('')
   };
   return wait(success(dialogData));
 }
 
-export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string) {
-  const data = buildAuthorizationEditorData(calleeAppCode);
+export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string, callerAppCode?: string) {
+  const checkedApiPaths = singleAppAuthorizations.find((item) =>
+    item.caller_app_code === callerAppCode && item.callee_app_code === calleeAppCode
+  )?.api_paths || [];
+  const data = buildAuthorizationEditorData(calleeAppCode, checkedApiPaths);
   return wait(success(data));
+}
+
+export async function fetchExistingSingleAppAuthorization(callerAppCode: string, calleeAppCode: string) {
+  const current = singleAppAuthorizations.find((item) =>
+    item.caller_app_code === callerAppCode && item.callee_app_code === calleeAppCode
+  ) || null;
+  return wait(success(current));
 }
 
 export function calcAuthorizationDelta(originalApiIds: number[], nextApiIds: number[]): AuthorizationDelta {
@@ -95,7 +98,6 @@ export function calcAuthorizationDelta(originalApiIds: number[], nextApiIds: num
 
 export async function saveSingleAppAuthorization(payload: SingleAppAuthorizationEditorPayload & { id?: number }) {
   const selectedApiPaths = getApiPathsByIds(payload.checked_api_ids);
-  const selectedApiGroupIds = getApiGroupIdsByIds(payload.checked_api_ids);
 
   // 编辑场景下允许撤销到空，按约定直接删除整条授权关系。
   if (payload.id) {
@@ -116,8 +118,7 @@ export async function saveSingleAppAuthorization(payload: SingleAppAuthorization
       caller_app_name: apps.find((item) => item.app_code === payload.caller_app_code)?.app_name || current.caller_app_name,
       callee_app_code: payload.callee_app_code,
       callee_app_name: apps.find((item) => item.app_code === payload.callee_app_code)?.app_name || current.callee_app_name,
-      api_paths: selectedApiPaths,
-      api_group_ids: selectedApiGroupIds
+      api_paths: selectedApiPaths
     };
     return wait(success(true, '权限更新成功'));
   }
@@ -132,7 +133,6 @@ export async function saveSingleAppAuthorization(payload: SingleAppAuthorization
 
   if (existed) {
     existed.api_paths = selectedApiPaths;
-    existed.api_group_ids = selectedApiGroupIds;
     return wait(success(true, '授权关系已更新'));
   }
 
@@ -142,8 +142,7 @@ export async function saveSingleAppAuthorization(payload: SingleAppAuthorization
     caller_app_name: apps.find((item) => item.app_code === payload.caller_app_code)?.app_name || payload.caller_app_code,
     callee_app_code: payload.callee_app_code,
     callee_app_name: apps.find((item) => item.app_code === payload.callee_app_code)?.app_name || payload.callee_app_code,
-    api_paths: selectedApiPaths,
-    api_group_ids: selectedApiGroupIds
+    api_paths: selectedApiPaths
   };
   singleAppAuthorizations.unshift(nextRecord);
 
@@ -301,13 +300,6 @@ export async function saveReverseAuthorization(payload: ReverseAuthorizationSave
       if (existedIndex >= 0) {
         const record = singleAppAuthorizations[existedIndex];
         record.api_paths = [...new Set([...record.api_paths, ...selectedPaths])];
-        record.api_group_ids = [...new Set([
-          ...record.api_group_ids,
-          ...apiGroups
-            .filter((group) => group.app_code === calleeAppCode)
-            .filter((group) => group.api_paths.some((path) => selectedPaths.includes(path)))
-            .map((group) => group.id)
-        ])];
       } else {
         const callerApp = apps.find((item) => item.app_code === callerAppCode);
         singleAppAuthorizations.unshift({
@@ -316,11 +308,7 @@ export async function saveReverseAuthorization(payload: ReverseAuthorizationSave
           caller_app_name: callerApp?.app_name || callerAppCode,
           callee_app_code: calleeAppCode,
           callee_app_name: calleeApp?.app_name || calleeAppCode,
-          api_paths: [...selectedPaths],
-          api_group_ids: apiGroups
-            .filter((group) => group.app_code === calleeAppCode)
-            .filter((group) => group.api_paths.some((path) => selectedPaths.includes(path)))
-            .map((group) => group.id)
+          api_paths: [...selectedPaths]
         });
       }
       return;
@@ -329,10 +317,6 @@ export async function saveReverseAuthorization(payload: ReverseAuthorizationSave
     if (existedIndex >= 0) {
       const record = singleAppAuthorizations[existedIndex];
       record.api_paths = record.api_paths.filter((path) => !selectedPaths.includes(path));
-      record.api_group_ids = record.api_group_ids.filter((groupId) => {
-        const group = apiGroups.find((item) => item.id === groupId);
-        return group?.api_paths.some((path) => record.api_paths.includes(path));
-      });
 
       if (!record.api_paths.length) {
         singleAppAuthorizations.splice(existedIndex, 1);

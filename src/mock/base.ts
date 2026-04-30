@@ -1,6 +1,5 @@
 import type {
   ActivityRecord,
-  ApiGroupItem,
   ApiItem,
   AppGroupItem,
   AppItem,
@@ -16,9 +15,7 @@ import type {
 
 const APP_TOTAL = 100;
 const API_PER_APP = 100;
-const API_GROUP_PER_APP = 5;
 const GENERATED_API_ID_BASE = 100000;
-const LEGACY_API_ID_BASE = 900000;
 
 const pad = (value: number, length = 2) => String(value).padStart(length, '0');
 const dateTime = (day: number, hour: number, minute: number) =>
@@ -69,7 +66,6 @@ const actions = [
   { code: 'evaluate', name: '评估' },
   { code: 'refresh', name: '刷新缓存' }
 ];
-const apiGroupNames = ['查询能力组', '交易写入组', '状态同步组', '批量任务组', '内部治理组'];
 const businessDomains = [
   { code: 'trade', name: '交易' },
   { code: 'order', name: '订单' },
@@ -150,51 +146,39 @@ const generatedApps: AppItem[] = Array.from({ length: APP_TOTAL - seedApps.lengt
 });
 
 export const apps: AppItem[] = [...seedApps, ...generatedApps];
-const appByCode = new Map(apps.map((app) => [app.app_code, app]));
 
 const seedApis: ApiItem[] = [
-  { id: 1, app_code: 'order-service', app_name: '订单中心', api_name: '创建订单', api_path: '/api/order/create', api_method: 'POST', api_version_id: 20260422000000n, version: 'v2.3.0', api_description: '提交订单主流程接口', api_group_ids: [], api_group_names: [], create_time: '2026-03-10 10:00:00', update_time: '2026-04-20 10:32:00', is_deleted: 0 },
-  { id: 2, app_code: 'order-service', app_name: '订单中心', api_name: '查询订单详情', api_path: '/api/order/detail', api_method: 'GET', api_version_id: 20260422000000n, version: 'v2.3.0', api_description: '按订单号查询订单详情', api_group_ids: [], api_group_names: [], create_time: '2026-03-10 10:10:00', update_time: '2026-04-20 10:50:00', is_deleted: 0 },
-  { id: 3, app_code: 'order-service', app_name: '订单中心', api_name: '关闭超时订单', api_path: '/api/order/close-timeout', api_method: 'POST', api_version_id: 20260422000000n, version: 'v2.2.4', api_description: '批量关闭超时未支付订单', api_group_ids: [], api_group_names: [], create_time: '2026-03-11 10:10:00', update_time: '2026-04-18 10:50:00', is_deleted: 0 },
-  { id: 4, app_code: 'user-service', app_name: '用户中心', api_name: '查询用户画像', api_path: '/api/user/profile', api_method: 'GET', api_version_id: 20260422000000n, version: 'v1.4.1', api_description: '拉取用户画像标签信息', api_group_ids: [], api_group_names: [], create_time: '2026-03-10 11:00:00', update_time: '2026-04-20 08:15:00', is_deleted: 0 },
-  { id: 5, app_code: 'user-service', app_name: '用户中心', api_name: '查询会员等级', api_path: '/api/member/level', api_method: 'GET', api_version_id: 20260422000000n, version: 'v1.1.0', api_description: '查询会员等级和权益', api_group_ids: [], api_group_names: [], create_time: '2026-03-10 11:10:00', update_time: '2026-04-17 16:10:00', is_deleted: 0 },
-  { id: 6, app_code: 'user-service', app_name: '用户中心', api_name: '同步实名信息', api_path: '/api/user/identity/sync', api_method: 'PUT', api_version_id: 20260422000000n, version: 'v1.0.0', api_description: '同步实名认证状态', api_group_ids: [], api_group_names: [], create_time: '2026-03-10 11:20:00', update_time: '2026-04-01 13:10:00', is_deleted: 0 },
-  { id: 7, app_code: 'pay-gateway', app_name: '支付网关', api_name: '支付预校验', api_path: '/api/pay/pre-check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.1', api_description: '校验支付单状态、限额和风控策略', api_group_ids: [], api_group_names: [], create_time: '2026-03-12 09:30:00', update_time: '2026-04-22 08:00:00', is_deleted: 0 },
-  { id: 8, app_code: 'pay-gateway', app_name: '支付网关', api_name: '提交支付', api_path: '/api/pay/submit', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.1', api_description: '发起支付扣款流程', api_group_ids: [], api_group_names: [], create_time: '2026-03-12 09:40:00', update_time: '2026-04-20 22:00:00', is_deleted: 0 },
-  { id: 9, app_code: 'pay-gateway', app_name: '支付网关', api_name: '发起退款申请', api_path: '/api/pay/refund', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.1', api_description: '提交退款申请并更新退款状态机', api_group_ids: [], api_group_names: [], create_time: '2026-03-12 09:50:00', update_time: '2026-04-20 20:12:00', is_deleted: 0 },
-  { id: 10, app_code: 'pay-gateway', app_name: '支付网关', api_name: '查询支付流水', api_path: '/api/pay/record', api_method: 'GET', api_version_id: 20260422000000n, version: 'v3.0.0', api_description: '根据支付单号查询支付流水', api_group_ids: [], api_group_names: [], create_time: '2026-03-12 10:00:00', update_time: '2026-04-17 12:00:00', is_deleted: 0 },
-  { id: 11, app_code: 'stock-service', app_name: '库存服务', api_name: '库存校验', api_path: '/api/stock/check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.8.0', api_description: '校验 SKU 可售库存', api_group_ids: [], api_group_names: [], create_time: '2026-03-13 09:00:00', update_time: '2026-04-20 18:00:00', is_deleted: 0 },
-  { id: 12, app_code: 'stock-service', app_name: '库存服务', api_name: '库存预占', api_path: '/api/stock/reserve', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.8.2', api_description: '下单时锁定库存', api_group_ids: [], api_group_names: [], create_time: '2026-03-13 09:10:00', update_time: '2026-04-21 07:55:00', is_deleted: 0 },
-  { id: 13, app_code: 'stock-service', app_name: '库存服务', api_name: '库存释放', api_path: '/api/stock/release', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.8.2', api_description: '取消订单时释放库存', api_group_ids: [], api_group_names: [], create_time: '2026-03-13 09:20:00', update_time: '2026-04-18 09:20:00', is_deleted: 0 },
-  { id: 14, app_code: 'marketing-service', app_name: '营销平台', api_name: '校验优惠券', api_path: '/api/coupon/validate', api_method: 'POST', api_version_id: 20260422000000n, version: 'v2.0.0', api_description: '校验优惠券可用性', api_group_ids: [], api_group_names: [], create_time: '2026-03-14 10:00:00', update_time: '2026-04-18 10:20:00', is_deleted: 0 },
-  { id: 15, app_code: 'marketing-service', app_name: '营销平台', api_name: '查询活动资格', api_path: '/api/activity/eligibility', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.2.1', api_description: '查询用户活动参与资格', api_group_ids: [], api_group_names: [], create_time: '2026-03-14 10:10:00', update_time: '2026-04-20 12:00:00', is_deleted: 0 },
-  { id: 16, app_code: 'marketing-service', app_name: '营销平台', api_name: '创建营销活动', api_path: '/api/activity/create', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.0.3', api_description: '后台创建活动模板', api_group_ids: [], api_group_names: [], create_time: '2026-03-14 10:20:00', update_time: '2026-04-12 08:11:00', is_deleted: 0 },
-  { id: 17, app_code: 'risk-engine', app_name: '风控引擎', api_name: '风险决策评估', api_path: '/api/risk/evaluate', api_method: 'POST', api_version_id: 20260422000000n, version: 'v4.0.0', api_description: '对请求进行风险评估', api_group_ids: [], api_group_names: [], create_time: '2026-03-15 09:00:00', update_time: '2026-04-21 07:30:00', is_deleted: 0 },
-  { id: 18, app_code: 'risk-engine', app_name: '风控引擎', api_name: '黑名单校验', api_path: '/api/risk/blacklist/check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v4.1.0', api_description: '校验请求主体是否命中黑名单', api_group_ids: [], api_group_names: [], create_time: '2026-03-15 09:10:00', update_time: '2026-04-20 09:00:00', is_deleted: 0 },
-  { id: 19, app_code: 'pay-gateway', app_name: '支付网关', api_name: '查询退款明细', api_path: '/api/pay/refund/detail', api_method: 'GET', api_version_id: 20260422000000n, version: 'v3.0.2', api_description: '根据退款单号查询退款明细', api_group_ids: [], api_group_names: [], create_time: '2026-04-21 09:00:00', update_time: '2026-04-22 08:20:00', is_deleted: 0 },
-  { id: 20, app_code: 'pay-gateway', app_name: '支付网关', api_name: '幂等校验', api_path: '/api/pay/idempotent/check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.2', api_description: '支付提交前执行幂等校验', api_group_ids: [], api_group_names: [], create_time: '2026-04-21 09:10:00', update_time: '2026-04-22 08:30:00', is_deleted: 0 }
+  { id: 1, app_code: 'order-service', app_name: '订单中心', api_name: '创建订单', api_path: '/api/order/create', api_method: 'POST', api_version_id: 20260422000000n, version: 'v2.3.0', api_description: '提交订单主流程接口', create_time: '2026-03-10 10:00:00', update_time: '2026-04-20 10:32:00', is_deleted: 0 },
+  { id: 2, app_code: 'order-service', app_name: '订单中心', api_name: '查询订单详情', api_path: '/api/order/detail', api_method: 'GET', api_version_id: 20260422000000n, version: 'v2.3.0', api_description: '按订单号查询订单详情', create_time: '2026-03-10 10:10:00', update_time: '2026-04-20 10:50:00', is_deleted: 0 },
+  { id: 3, app_code: 'order-service', app_name: '订单中心', api_name: '关闭超时订单', api_path: '/api/order/close-timeout', api_method: 'POST', api_version_id: 20260422000000n, version: 'v2.2.4', api_description: '批量关闭超时未支付订单', create_time: '2026-03-11 10:10:00', update_time: '2026-04-18 10:50:00', is_deleted: 0 },
+  { id: 4, app_code: 'user-service', app_name: '用户中心', api_name: '查询用户画像', api_path: '/api/user/profile', api_method: 'GET', api_version_id: 20260422000000n, version: 'v1.4.1', api_description: '拉取用户画像标签信息', create_time: '2026-03-10 11:00:00', update_time: '2026-04-20 08:15:00', is_deleted: 0 },
+  { id: 5, app_code: 'user-service', app_name: '用户中心', api_name: '查询会员等级', api_path: '/api/member/level', api_method: 'GET', api_version_id: 20260422000000n, version: 'v1.1.0', api_description: '查询会员等级和权益', create_time: '2026-03-10 11:10:00', update_time: '2026-04-17 16:10:00', is_deleted: 0 },
+  { id: 6, app_code: 'user-service', app_name: '用户中心', api_name: '同步实名信息', api_path: '/api/user/identity/sync', api_method: 'PUT', api_version_id: 20260422000000n, version: 'v1.0.0', api_description: '同步实名认证状态', create_time: '2026-03-10 11:20:00', update_time: '2026-04-01 13:10:00', is_deleted: 0 },
+  { id: 7, app_code: 'pay-gateway', app_name: '支付网关', api_name: '支付预校验', api_path: '/api/pay/pre-check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.1', api_description: '校验支付单状态、限额和风控策略', create_time: '2026-03-12 09:30:00', update_time: '2026-04-22 08:00:00', is_deleted: 0 },
+  { id: 8, app_code: 'pay-gateway', app_name: '支付网关', api_name: '提交支付', api_path: '/api/pay/submit', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.1', api_description: '发起支付扣款流程', create_time: '2026-03-12 09:40:00', update_time: '2026-04-20 22:00:00', is_deleted: 0 },
+  { id: 9, app_code: 'pay-gateway', app_name: '支付网关', api_name: '发起退款申请', api_path: '/api/pay/refund', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.1', api_description: '提交退款申请并更新退款状态机', create_time: '2026-03-12 09:50:00', update_time: '2026-04-20 20:12:00', is_deleted: 0 },
+  { id: 10, app_code: 'pay-gateway', app_name: '支付网关', api_name: '查询支付流水', api_path: '/api/pay/record', api_method: 'GET', api_version_id: 20260422000000n, version: 'v3.0.0', api_description: '根据支付单号查询支付流水', create_time: '2026-03-12 10:00:00', update_time: '2026-04-17 12:00:00', is_deleted: 0 },
+  { id: 11, app_code: 'stock-service', app_name: '库存服务', api_name: '库存校验', api_path: '/api/stock/check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.8.0', api_description: '校验 SKU 可售库存', create_time: '2026-03-13 09:00:00', update_time: '2026-04-20 18:00:00', is_deleted: 0 },
+  { id: 12, app_code: 'stock-service', app_name: '库存服务', api_name: '库存预占', api_path: '/api/stock/reserve', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.8.2', api_description: '下单时锁定库存', create_time: '2026-03-13 09:10:00', update_time: '2026-04-21 07:55:00', is_deleted: 0 },
+  { id: 13, app_code: 'stock-service', app_name: '库存服务', api_name: '库存释放', api_path: '/api/stock/release', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.8.2', api_description: '取消订单时释放库存', create_time: '2026-03-13 09:20:00', update_time: '2026-04-18 09:20:00', is_deleted: 0 },
+  { id: 14, app_code: 'marketing-service', app_name: '营销平台', api_name: '校验优惠券', api_path: '/api/coupon/validate', api_method: 'POST', api_version_id: 20260422000000n, version: 'v2.0.0', api_description: '校验优惠券可用性', create_time: '2026-03-14 10:00:00', update_time: '2026-04-18 10:20:00', is_deleted: 0 },
+  { id: 15, app_code: 'marketing-service', app_name: '营销平台', api_name: '查询活动资格', api_path: '/api/activity/eligibility', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.2.1', api_description: '查询用户活动参与资格', create_time: '2026-03-14 10:10:00', update_time: '2026-04-20 12:00:00', is_deleted: 0 },
+  { id: 16, app_code: 'marketing-service', app_name: '营销平台', api_name: '创建营销活动', api_path: '/api/activity/create', api_method: 'POST', api_version_id: 20260422000000n, version: 'v1.0.3', api_description: '后台创建活动模板', create_time: '2026-03-14 10:20:00', update_time: '2026-04-12 08:11:00', is_deleted: 0 },
+  { id: 17, app_code: 'risk-engine', app_name: '风控引擎', api_name: '风险决策评估', api_path: '/api/risk/evaluate', api_method: 'POST', api_version_id: 20260422000000n, version: 'v4.0.0', api_description: '对请求进行风险评估', create_time: '2026-03-15 09:00:00', update_time: '2026-04-21 07:30:00', is_deleted: 0 },
+  { id: 18, app_code: 'risk-engine', app_name: '风控引擎', api_name: '黑名单校验', api_path: '/api/risk/blacklist/check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v4.1.0', api_description: '校验请求主体是否命中黑名单', create_time: '2026-03-15 09:10:00', update_time: '2026-04-20 09:00:00', is_deleted: 0 },
+  { id: 19, app_code: 'pay-gateway', app_name: '支付网关', api_name: '查询退款明细', api_path: '/api/pay/refund/detail', api_method: 'GET', api_version_id: 20260422000000n, version: 'v3.0.2', api_description: '根据退款单号查询退款明细', create_time: '2026-04-21 09:00:00', update_time: '2026-04-22 08:20:00', is_deleted: 0 },
+  { id: 20, app_code: 'pay-gateway', app_name: '支付网关', api_name: '幂等校验', api_path: '/api/pay/idempotent/check', api_method: 'POST', api_version_id: 20260422000000n, version: 'v3.0.2', api_description: '支付提交前执行幂等校验', create_time: '2026-04-21 09:10:00', update_time: '2026-04-22 08:30:00', is_deleted: 0 }
 ];
 
-const groupId = (appCode: string, index: number) => (appByCode.get(appCode)?.id || 0) * 10 + index + 1;
 const seedApisByApp = seedApis.reduce<Record<string, ApiItem[]>>((record, item) => {
   record[item.app_code] = [...(record[item.app_code] || []), item];
   return record;
 }, {});
 
-function withApiGroup(api: ApiItem, order: number): ApiItem {
-  const groupIndex = Math.min(Math.floor(order / (API_PER_APP / API_GROUP_PER_APP)), API_GROUP_PER_APP - 1);
-  return {
-    ...api,
-    api_group_ids: [groupId(api.app_code, groupIndex)],
-    api_group_names: [apiGroupNames[groupIndex]]
-  };
-}
-
 function createGeneratedApi(app: AppItem, order: number): ApiItem {
   const resource = resources[order % resources.length];
   const action = actions[Math.floor(order / resources.length) % actions.length];
   const method = methods[(order + app.id) % methods.length];
-  const groupIndex = Math.min(Math.floor(order / (API_PER_APP / API_GROUP_PER_APP)), API_GROUP_PER_APP - 1);
   return {
     id: GENERATED_API_ID_BASE + app.id * 1000 + order + 1,
     app_code: app.app_code,
@@ -205,8 +189,6 @@ function createGeneratedApi(app: AppItem, order: number): ApiItem {
     api_version_id: BigInt(`20260422${pad(app.id, 6)}`),
     version: app.current_version,
     api_description: `${app.app_name}提供的${resource.name}${action.name}能力，用于服务间 API 调用治理`,
-    api_group_ids: [groupId(app.app_code, groupIndex)],
-    api_group_names: [apiGroupNames[groupIndex]],
     create_time: dateTime(order + 1, 8 + (order % 8), (order * 3) % 60),
     update_time: dateTime(order + 8, 10 + (order % 7), (order * 5) % 60),
     is_deleted: 0
@@ -214,30 +196,12 @@ function createGeneratedApi(app: AppItem, order: number): ApiItem {
 }
 
 export const apis: ApiItem[] = apps.flatMap((app) => {
-  const normalizedSeedApis = (seedApisByApp[app.app_code] || []).map((api, index) => withApiGroup(api, index));
+  const normalizedSeedApis = seedApisByApp[app.app_code] || [];
   const fillApis = Array.from({ length: API_PER_APP - normalizedSeedApis.length }, (_, index) =>
     createGeneratedApi(app, normalizedSeedApis.length + index)
   );
   return [...normalizedSeedApis, ...fillApis];
 });
-
-export const apiGroups: ApiGroupItem[] = apps.flatMap((app) =>
-  apiGroupNames.map((name, index) => {
-    const groupApis = apis.filter((api) => api.app_code === app.app_code && api.api_group_ids.includes(groupId(app.app_code, index)));
-    return {
-      id: groupId(app.app_code, index),
-      api_group_name: name,
-      api_group_description: `${app.app_name}${name}，包含 ${groupApis.length} 个 API`,
-      app_code: app.app_code,
-      app_name: app.app_name,
-      api_ids: groupApis.map((api) => api.id),
-      api_paths: groupApis.map((api) => api.api_path),
-      create_time: dateTime(index + 1, 9, index * 10),
-      update_time: dateTime(index + 10, 11, index * 8),
-      is_deleted: 0
-    };
-  })
-);
 
 export const appGroups: AppGroupItem[] = Array.from({ length: 20 }, (_, index) => {
   const groupApps = apps.slice(index * 5, index * 5 + 5);
@@ -315,8 +279,7 @@ for (let i = 0; i < 400; i++) {
     caller_app_name: caller.app_name,
     callee_app_code: callee.app_code,
     callee_app_name: callee.app_name,
-    api_paths: calleeApis.map((api) => api.api_path),
-    api_group_ids: [...new Set(calleeApis.flatMap((api) => api.api_group_ids))]
+    api_paths: calleeApis.map((api) => api.api_path)
   });
 }
 
@@ -371,7 +334,7 @@ export const dashboardActivities: {
   ],
   auths: [
     { id: 3, title: '授权关系批量生成', description: `当前单应用授权关系 ${singleAppAuthorizations.length} 条`, time: authConfigLogs[0]?.log_time || '2026-04-22 10:00:00' },
-    { id: 4, title: 'API 分组权限同步', description: `当前 API 分组总量 ${apiGroups.length} 条`, time: '2026-04-21 17:20:00' }
+    { id: 4, title: '授权策略基线同步', description: '单应用授权配置已完成初始化同步', time: '2026-04-21 17:20:00' }
   ],
   calls: [
     { id: 5, title: '远程调用日志生成', description: `当前远程调用日志 ${remoteCallLogs.length} 条`, time: remoteCallLogs[0]?.log_time || '2026-04-22 10:15:00' },

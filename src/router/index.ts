@@ -23,7 +23,7 @@ const routes = [
         path: 'dashboard/topology',
         name: 'ApiAuthTopology',
         component: () => import('@/views/dashboard/ApiAuthTopologyView.vue'),
-        meta: { title: 'API授权拓扑图' }
+        meta: { title: 'API 授权拓扑图' }
       },
       {
         path: 'api/list',
@@ -48,12 +48,6 @@ const routes = [
         name: 'AppList',
         component: () => import('@/views/app/AppListView.vue'),
         meta: { title: 'APP 列表' }
-      },
-      {
-        path: 'groups/api',
-        name: 'ApiGroupList',
-        component: () => import('@/views/groups/ApiGroupListView.vue'),
-        meta: { title: 'API 分组' }
       },
       {
         path: 'auth/app',
