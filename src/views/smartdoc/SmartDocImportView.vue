@@ -121,9 +121,9 @@
             </div>
             <div v-if="index < authFlowItems.length - 1" class="flow-line" />
           </div>
-          <div class="flow-return">
+          <div v-if="authStep === 2" class="flow-return">
             <span class="flow-return-arrow">↺</span>
-            <span>确认并继续返回 Step1</span>
+            <span>点击 确认并继续 返回 Step1</span>
           </div>
         </div>
 
@@ -141,27 +141,38 @@
                       <h3 class="section-title">选择调用方服务</h3>
                       <span class="section-meta">已处理 {{ authAssignments.length }} 个服务</span>
                     </div>
-                    <el-input v-model="callerSearchKeyword" clearable placeholder="搜索调用方服务编码或名称" />
-                    <el-select v-model="currentCallerAppCode" placeholder="请选择调用方服务" filterable clearable>
-                      <el-option
-                        v-for="item in filteredCallerApps"
-                        :key="item.app_code"
-                        :label="`${item.app_name}（${item.app_code}）`"
-                        :value="item.app_code"
-                    :disabled="processedCallerCodes.includes(item.app_code)"
-                  >
-                    <div class="service-option">
-                      <span>{{ item.app_name }}（{{ item.app_code }}）</span>
-                      <el-tag v-if="processedCallerCodes.includes(item.app_code)" size="small" type="success">已处理</el-tag>
+                    <div class="caller-select-row">
+                      <el-select v-model="currentCallerAppCode" placeholder="请选择调用方服务" filterable clearable class="caller-select">
+                        <el-option
+                          v-for="item in availableCallerApps"
+                          :key="item.app_code"
+                          :label="`${item.app_name}（${item.app_code}）`"
+                          :value="item.app_code"
+                          :disabled="processedCallerCodes.includes(item.app_code)"
+                        >
+                          <div class="service-option">
+                            <span>{{ item.app_name }}（{{ item.app_code }}）</span>
+                            <el-tag v-if="processedCallerCodes.includes(item.app_code)" size="small" type="success">已处理</el-tag>
+                          </div>
+                        </el-option>
+                      </el-select>
+                      <el-button type="primary" :disabled="!currentCallerAppCode" @click="goAuthNextStep">下一步</el-button>
                     </div>
-                  </el-option>
-                </el-select>
 
-                <div class="change-tags">
-                  <el-tag v-for="item in authAssignments" :key="item.app_code" type="success">
-                    {{ item.app_name }}（{{ item.app_code }}）/ {{ item.api_ids.length }} 个 API
-                  </el-tag>
-                  <el-empty v-if="!authAssignments.length" description="暂无已处理服务" :image-size="40" />
+                <div class="processed-services-panel">
+                  <div v-if="authAssignments.length" class="processed-service-list">
+                    <div v-for="item in authAssignments" :key="item.app_code" class="processed-service-row">
+                      <div class="processed-service-main">
+                        <div class="processed-service-name">{{ item.app_name }}（{{ item.app_code }}）</div>
+                        <div class="processed-service-meta">已分配 {{ item.api_ids.length }} 个 API</div>
+                      </div>
+                      <div class="processed-service-actions">
+                        <el-button link type="primary" @click="openAssignmentDetail(item)">详情</el-button>
+                        <el-button link type="primary" @click="reuseAssignment(item)">重新选择</el-button>
+                      </div>
+                    </div>
+                  </div>
+                  <el-empty v-else description="暂无已处理服务" :image-size="44" />
                 </div>
               </div>
             </div>
@@ -192,7 +203,7 @@
                     <el-descriptions-item label="当前调用方服务">{{ currentCallerAppName }}</el-descriptions-item>
                     <el-descriptions-item label="被调用方服务">{{ authMeta.callee_app_name }}（{{ authMeta.callee_app_code }}）</el-descriptions-item>
                   </el-descriptions>
-                  <el-table :data="currentApiRows" border max-height="420">
+                  <el-table :data="currentApiRows" border max-height="440">
                     <el-table-column prop="api_name" label="API 名称" min-width="220" />
                     <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
                   </el-table>
@@ -223,7 +234,7 @@
                     <el-tab-pane :label="`未授权 API（${unassignedApis.length}）`" name="unassigned">
                       <div class="step-section secondary-section">
                         <el-empty v-if="!unassignedApis.length" description="所有新增 API 均已纳入授权" :image-size="44" />
-                        <el-table v-else :data="unassignedApis" border max-height="220">
+                        <el-table v-else :data="unassignedApis" border max-height="400">
                           <el-table-column prop="api_name" label="API 名称" min-width="220" />
                           <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
                         </el-table>
@@ -238,7 +249,7 @@
       <template #footer>
         <template v-if="authStep === 0">
           <el-button @click="closeAuthorizeDialog">取消</el-button>
-          <el-button type="primary" :disabled="!currentCallerAppCode" @click="goAuthNextStep">下一步</el-button>
+          <el-button type="primary" :disabled="!authAssignments.length" @click="goAuthorizeReview">完成确认</el-button>
         </template>
         <template v-else-if="authStep === 1">
           <el-button @click="goAuthPrevStep">上一步</el-button>
@@ -258,6 +269,20 @@
         </template>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="assignmentDetailVisible" title="已处理服务详情" size="640px">
+      <div class="api-detail-panel">
+        <el-descriptions v-if="assignmentDetailTarget" :column="1" border>
+          <el-descriptions-item label="调用方服务">{{ assignmentDetailTarget.app_name }}（{{ assignmentDetailTarget.app_code }}）</el-descriptions-item>
+          <el-descriptions-item label="已分配 API 数量">{{ assignmentDetailTarget.api_ids.length }} 个</el-descriptions-item>
+        </el-descriptions>
+
+        <el-table :data="assignmentDetailRows" border>
+          <el-table-column prop="api_name" label="API 名称" min-width="220" />
+          <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+        </el-table>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -297,16 +322,17 @@ const authStep = ref(0);
 const authCompleted = ref(false);
 const finalTab = ref('authorized');
 const authFlowItems = [
-  { title: '选择服务', desc: '先选调用方服务' },
-  { title: 'API 授权', desc: '穿梭器选择 API' },
-  { title: '确认', desc: '继续或完成' },
-  { title: '完成', desc: '最终授权确认' }
+  { title: '选择调用方服务', desc: '先确定当前要授权的服务' },
+  { title: '选择 API', desc: '为当前服务分配新增 API' },
+  { title: '确认当前服务', desc: '继续授权其他服务或进入最终确认' },
+  { title: '最终确认', desc: '统一确认全部授权结果' }
 ];
 const authCatalog = ref<AuthApiItem[]>([]);
 const authAssignments = ref<AuthAssignment[]>([]);
 const currentCallerAppCode = ref('');
 const currentTransferKeys = ref<number[]>([]);
-const callerSearchKeyword = ref('');
+const assignmentDetailVisible = ref(false);
+const assignmentDetailTarget = ref<AuthAssignment | null>(null);
 const authMeta = reactive({
   callee_app_code: '',
   callee_app_name: '',
@@ -317,10 +343,6 @@ const processedCallerCodes = computed(() => authAssignments.value.map((item) => 
 const availableCallerApps = computed(() =>
   appOptions.value.filter((item) => item.app_code !== authMeta.callee_app_code)
 );
-const filteredCallerApps = computed(() => {
-  const keyword = callerSearchKeyword.value.trim();
-  return availableCallerApps.value.filter((item) => !keyword || item.app_code.includes(keyword) || item.app_name.includes(keyword));
-});
 const currentCallerAppName = computed(() => {
   const target = availableCallerApps.value.find((item) => item.app_code === currentCallerAppCode.value);
   return target ? `${target.app_name}（${target.app_code}）` : '-';
@@ -334,6 +356,11 @@ const transferData = computed(() =>
 const authApiMap = computed(() => new Map(authCatalog.value.map((item) => [item.id, item])));
 const currentApiRows = computed(() =>
   currentTransferKeys.value
+    .map((id) => authApiMap.value.get(id))
+    .filter(Boolean)
+);
+const assignmentDetailRows = computed(() =>
+  (assignmentDetailTarget.value?.api_ids || [])
     .map((id) => authApiMap.value.get(id))
     .filter(Boolean)
 );
@@ -393,7 +420,8 @@ function resetAuthorizeState() {
   authAssignments.value = [];
   currentCallerAppCode.value = '';
   currentTransferKeys.value = [];
-  callerSearchKeyword.value = '';
+  assignmentDetailVisible.value = false;
+  assignmentDetailTarget.value = null;
   authCatalog.value = [];
 }
 
@@ -466,7 +494,6 @@ function confirmAndContinue() {
   if (!ok) return;
   currentCallerAppCode.value = '';
   currentTransferKeys.value = [];
-  callerSearchKeyword.value = '';
   authStep.value = 0;
 }
 
@@ -474,6 +501,28 @@ function confirmAndFinish() {
   const ok = saveCurrentAssignment();
   if (!ok) return;
   authStep.value = 3;
+}
+
+function goAuthorizeReview() {
+  if (!authAssignments.value.length) {
+    ElMessage.warning('请先至少完成一个调用方服务的授权');
+    return;
+  }
+  authStep.value = 3;
+}
+
+function openAssignmentDetail(item: AuthAssignment) {
+  assignmentDetailTarget.value = item;
+  assignmentDetailVisible.value = true;
+}
+
+function reuseAssignment(item: AuthAssignment) {
+  currentCallerAppCode.value = item.app_code;
+  currentTransferKeys.value = [...item.api_ids];
+  authAssignments.value = authAssignments.value.filter((assignment) => assignment.app_code !== item.app_code);
+  assignmentDetailVisible.value = false;
+  assignmentDetailTarget.value = null;
+  authStep.value = 1;
 }
 
 function cancelAuthorize() {
@@ -488,7 +537,6 @@ function restartAuthorize() {
   authAssignments.value = [];
   currentCallerAppCode.value = '';
   currentTransferKeys.value = [];
-  callerSearchKeyword.value = '';
   authStep.value = 0;
   authCompleted.value = false;
 }
@@ -733,12 +781,14 @@ onMounted(async () => {
 
 .step-card {
   border-radius: 12px;
+  min-height: 570px;
 }
 
 .step-layout {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 500px;
 }
 
 .step-section {
@@ -749,6 +799,21 @@ onMounted(async () => {
 
 .secondary-section {
   padding-top: 6px;
+  min-height: 360px;
+}
+
+.secondary-section :deep(.el-empty) {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.secondary-section :deep(.el-empty__content) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .section-head {
@@ -792,30 +857,95 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.change-tags {
+.caller-select-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-content: flex-start;
-  min-height: 84px;
-  max-height: 132px;
-  overflow: hidden;
-  padding: 10px;
+  align-items: center;
+  gap: 12px;
+}
+
+.caller-select {
+  flex: 1;
+}
+
+.processed-services-panel {
+  min-height: 310px;
+  max-height: 310px;
+  overflow: auto;
+  padding: 12px 14px;
   border-radius: 10px;
   background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
-.change-tags :deep(.el-empty) {
+.processed-services-panel :deep(.el-empty) {
   width: 100%;
+  min-height: 284px;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.change-tags :deep(.el-empty__image) {
+.processed-services-panel :deep(.el-empty__content) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.processed-services-panel :deep(.el-empty__image) {
   margin-bottom: 4px;
 }
 
-.change-tags :deep(.el-empty__description) {
+.processed-services-panel :deep(.el-empty__description) {
   margin-top: 0;
+}
+
+.processed-service-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.processed-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.processed-service-row:first-child {
+  padding-top: 2px;
+}
+
+.processed-service-row:last-child {
+  border-bottom: none;
+  padding-bottom: 2px;
+}
+
+.processed-service-main {
+  min-width: 0;
+}
+
+.processed-service-name {
+  color: var(--sg-text);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.processed-service-meta {
+  margin-top: 4px;
+  color: var(--sg-subtext);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.processed-service-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .api-transfer {
@@ -843,6 +973,7 @@ onMounted(async () => {
   width: 100% !important;
   min-width: 0;
   max-width: none !important;
+  height: 490px;
 }
 
 .api-transfer :deep(.el-transfer__buttons) {
@@ -858,6 +989,14 @@ onMounted(async () => {
 .api-transfer :deep(.el-transfer__buttons .el-button) {
   width: 96px;
   margin: 0 !important;
+}
+
+.api-transfer :deep(.el-transfer-panel__body) {
+  height: calc(100% - 40px);
+}
+
+.api-transfer :deep(.el-transfer-panel__list) {
+  height: 100%;
 }
 
 .empty-text {
