@@ -4,7 +4,7 @@
     <el-card class="panel-card topology-card" shadow="never">
       <div class="topology-header">
         <div class="topology-title">
-          <h3>API授权拓扑图</h3>
+          <h3>API 授权拓扑图</h3>
           <p class="text-muted">
             当前纳管：{{ stats?.app_total }} 个服务，{{ stats?.api_total }} 个 API，共配置 {{ stats?.auth_relation_total }} 条授权
           </p>

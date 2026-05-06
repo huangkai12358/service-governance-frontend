@@ -1,26 +1,33 @@
 import { defineStore } from 'pinia';
 import type { UserInfo } from '@/types/business';
-import { clearStoredUser, clearToken, getStoredUser, getToken, setStoredUser, setToken } from '@/utils/storage';
+import {
+  clearSessionToken,
+  clearStoredUser,
+  getSessionToken,
+  getStoredUser,
+  setSessionToken,
+  setStoredUser
+} from '@/utils/storage';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: getStoredUser() ? (JSON.parse(getStoredUser() as string) as UserInfo) : null as UserInfo | null,
-    token: getToken() || ''
+    sessionToken: getSessionToken() || ''
   }),
   getters: {
-    isLoggedIn: (state) => Boolean(state.token)
+    isLoggedIn: (state) => Boolean(state.sessionToken)
   },
   actions: {
     login(payload: UserInfo) {
       this.user = payload;
-      this.token = payload.token;
-      setToken(payload.token);
+      this.sessionToken = payload.sessionToken;
+      setSessionToken(payload.sessionToken);
       setStoredUser(JSON.stringify(payload));
     },
     logout() {
       this.user = null;
-      this.token = '';
-      clearToken();
+      this.sessionToken = '';
+      clearSessionToken();
       clearStoredUser();
     }
   }

@@ -51,6 +51,7 @@
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowDown } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { logout as logoutApi } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 import { menus } from './menu';
 
@@ -58,10 +59,21 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
-function logout() {
-  authStore.logout();
-  ElMessage.success('已退出登录');
-  router.push('/login');
+async function logout() {
+  try {
+    if (authStore.sessionToken) {
+      await logoutApi({
+        sessionToken: authStore.sessionToken
+      });
+    }
+    ElMessage.success('已退出登录');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '退出登录失败';
+    ElMessage.warning(message);
+  } finally {
+    authStore.logout();
+    await router.push('/login');
+  }
 }
 </script>
 

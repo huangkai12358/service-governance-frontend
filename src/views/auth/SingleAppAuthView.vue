@@ -8,29 +8,42 @@
     </div>
 
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
-      <el-form-item>
-        <el-button type="primary" @click="exportToExcel">导出为Excel</el-button>
-      </el-form-item>
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
+      <el-form-item label="调用方应用名称"><el-input v-model="query.caller_app_name" clearable /></el-form-item>
       <el-form-item label="被调用方应用编码"><el-input v-model="query.callee_app_code" clearable /></el-form-item>
-      <template #actions>
-        <el-button type="primary" @click="openCreateDialog">新增授权</el-button>
-      </template>
+      <el-form-item label="被调用方应用名称"><el-input v-model="query.callee_app_name" clearable /></el-form-item>
     </PageSearch>
 
     <el-card class="panel-card" shadow="never">
+      <div class="table-toolbar">
+        <el-button type="primary" @click="openCreateDialog">新增 / 修改授权</el-button>
+        <el-button type="primary" @click="exportToExcel">导出为 Excel</el-button>
+      </div>
       <template v-if="list.length">
         <el-table :data="pagedList" border>
-          <el-table-column prop="caller_app_code" label="调用方应用编码" width="180" />
-          <el-table-column prop="callee_app_code" label="被调用方应用编码" width="180" />
-          <el-table-column label="授权的 API 列表" min-width="320">
+          <el-table-column prop="caller_app_code" label="调用方应用编码" min-width="150" />
+          <el-table-column prop="caller_app_name" label="调用方应用名称" min-width="120" />
+          <el-table-column prop="callee_app_code" label="被调用方应用编码" min-width="150" />
+          <el-table-column prop="callee_app_name" label="被调用方应用名称" min-width="120" />
+          <el-table-column label="被调用方应用当前版本号" align="center">
             <template #default="{ row }">
-              <el-tag v-for="path in row.api_paths" :key="path" style="margin-right:8px">{{ path }}</el-tag>
+              {{ getCurrentVersion(row) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="100">
+          <el-table-column label="授权 API 数（当前）" align="center">
             <template #default="{ row }">
-              <el-button link type="primary" @click="openEditor(row.id)">修改</el-button>
+              {{ splitAuthorizedApiRows(row).current.length }}
+            </template>
+          </el-table-column>
+          <el-table-column label="授权 API 数（废弃）" align="center">
+            <template #default="{ row }">
+              {{ splitAuthorizedApiRows(row).legacy.length }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="140" align="center" header-align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openApiDetail(row)">详情</el-button>
+              <el-button link type="primary" @click="openEditor(row.id)">授权配置</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -46,9 +59,7 @@
         </div>
       </template>
 
-      <el-empty v-else :description="emptyDescription">
-        <el-button type="primary" @click="openCreateDialog">新增授权</el-button>
-      </el-empty>
+      <el-empty v-else :description="emptyDescription"></el-empty>
     </el-card>
 
     <el-dialog
@@ -68,11 +79,13 @@
               <el-select
                 v-model="form.caller_app_code"
                 filterable
+                default-first-option
                 placeholder="请选择调用方应用"
-                :disabled="dialogMode === 'edit'"
+                :disabled="lockAppPair"
+                @change="handleCallerChange"
               >
                 <el-option
-                  v-for="app in appOptions"
+                  v-for="app in callerAppOptions"
                   :key="app.app_code"
                   :label="`${app.app_name}（${app.app_code}）`"
                   :value="app.app_code"
@@ -83,8 +96,9 @@
               <el-select
                 v-model="form.callee_app_code"
                 filterable
+                default-first-option
                 placeholder="请选择被调用方应用"
-                :disabled="dialogMode === 'edit'"
+                :disabled="lockAppPair"
                 @change="handleCalleeChange"
               >
                 <el-option
@@ -98,47 +112,34 @@
           </el-form>
           <div class="selection-tip">
             <span>已勾选 {{ checkedApiIds.length }} 个 API</span>
-            <span v-if="dialogMode === 'edit'" class="text-muted">若撤销至 0 个 API，保存后将删除该授权关系</span>
+            <span class="text-muted">若最终撤销至 0 个 API，保存后将在表格中删除该授权关系</span>
           </div>
         </div>
 
         <div class="auth-editor">
           <div class="editor-column">
             <h3 class="section-title">API 列表</h3>
-            <el-input v-model="apiKeyword" clearable placeholder="搜索 API 名称或请求路径" />
-            <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
-              <el-checkbox v-for="item in filteredApis" :key="item.id" :label="item.id">
-                <span class="option-title">{{ item.api_name }}</span>
-                <span class="option-subtitle">{{ item.api_path }}</span>
-              </el-checkbox>
-            </el-checkbox-group>
-          </div>
-
-          <div class="editor-column">
-            <h3 class="section-title">从分组中选择</h3>
-            <el-collapse v-model="activeGroups">
-              <el-collapse-item v-for="group in editorData.api_groups" :key="group.id" :name="group.id">
-                <template #title>
-                  <div class="group-title">
-                    <el-checkbox
-                      :model-value="isGroupChecked(group)"
-                      :indeterminate="isGroupIndeterminate(group)"
-                      @click.stop
-                      @change="toggleGroup(group, $event)"
-                    />
-                    <span class="group-name">{{ group.api_group_name }}</span>
-                  </div>
-                </template>
-                <el-checkbox-group v-model="checkedApiIds" class="group-api-list">
-                  <el-checkbox v-for="api in getGroupApis(group)" :key="api.id" :label="api.id">
-                    <span class="option-title">{{ api.api_name }}</span>
-                    <span class="option-subtitle">{{ api.api_path }}</span>
+            <el-input v-model="apiKeyword" clearable :placeholder="apiKeywordPlaceholder" />
+            <el-tabs v-model="editorTab">
+              <el-tab-pane :label="`当前版本（${filteredCurrentApis.length}）`" name="current">
+                <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
+                  <el-checkbox v-for="item in filteredCurrentApis" :key="item.id" :label="item.id">
+                    <span class="option-title">{{ item.api_name }}</span>
+                    <span class="option-subtitle">{{ item.api_path }}</span>
                   </el-checkbox>
                 </el-checkbox-group>
-              </el-collapse-item>
-            </el-collapse>
+              </el-tab-pane>
+              <el-tab-pane :label="`兼容旧版本（${filteredLegacyApis.length}）`" name="legacy">
+                <el-checkbox-group v-model="checkedApiIds" class="api-checkbox-list">
+                  <el-checkbox v-for="item in filteredLegacyApis" :key="item.id" :label="item.id">
+                    <span class="option-title">{{ item.api_name }}</span>
+                    <span class="option-subtitle">{{ item.api_path }}</span>
+                    <span class="option-meta">版本号：{{ item.version }}</span>
+                  </el-checkbox>
+                </el-checkbox-group>
+              </el-tab-pane>
+            </el-tabs>
           </div>
-
           <div class="editor-column">
             <h3 class="section-title">变更预览</h3>
             <div class="change-summary">
@@ -150,14 +151,18 @@
             <div class="change-section">
               <div class="change-section-title success-title">新增权限</div>
               <div class="change-tags">
-                <el-tag v-for="path in delta.added_api_paths" :key="path" type="success">{{ path }}</el-tag>
+                <el-tag v-for="item in addedApiDetails" :key="item.api_path" type="success">
+                  {{ item.api_name }}（{{ item.api_path }}）
+                </el-tag>
                 <span v-if="!delta.added_api_paths.length" class="empty-text">无新增权限</span>
               </div>
             </div>
             <div class="change-section">
               <div class="change-section-title warning-title">撤销权限</div>
               <div class="change-tags">
-                <el-tag v-for="path in delta.revoked_api_paths" :key="path" type="warning">{{ path }}</el-tag>
+                <el-tag v-for="item in revokedApiDetails" :key="item.api_path" type="warning">
+                  {{ item.api_name }}（{{ item.api_path }}）
+                </el-tag>
                 <span v-if="!delta.revoked_api_paths.length" class="empty-text">无撤销权限</span>
               </div>
             </div>
@@ -169,6 +174,48 @@
         <el-button type="primary" @click="submitEdit">确认</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="apiDetailVisible" title="已授权 API 详情" size="720px">
+      <div class="api-detail-panel">
+        <el-descriptions v-if="currentApiDetail" :column="1" border>
+          <el-descriptions-item label="调用方应用">{{ currentApiDetail.caller_app_name }}（{{ currentApiDetail.caller_app_code }}）</el-descriptions-item>
+          <el-descriptions-item label="被调用方应用">{{ currentApiDetail.callee_app_name }}（{{ currentApiDetail.callee_app_code }}）</el-descriptions-item>
+          <el-descriptions-item label="被调用方应用当前版本号">{{ currentDetailVersion }}</el-descriptions-item>
+          <el-descriptions-item label="已授权 API 数量">{{ currentApiDetail.api_paths.length }} 个</el-descriptions-item>
+        </el-descriptions>
+
+        <el-input v-model="apiDetailKeyword" clearable placeholder="搜索请求路径" />
+
+        <el-tabs v-model="apiDetailTab">
+          <el-tab-pane :label="`当前版本（${filteredCurrentApiDetailRows.length}）`" name="current">
+            <el-table :data="pagedCurrentApiDetailRows" border>
+              <el-table-column type="index" label="#" width="60" />
+              <el-table-column prop="api_name" label="API 名称" min-width="180" />
+              <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+            </el-table>
+          </el-tab-pane>
+          <el-tab-pane :label="`兼容旧版本（${filteredLegacyApiDetailRows.length}）`" name="legacy">
+            <el-table :data="pagedLegacyApiDetailRows" border>
+              <el-table-column type="index" label="#" width="60" />
+              <el-table-column prop="api_name" label="API 名称" min-width="180" />
+              <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+              <el-table-column prop="version" label="版本号" width="120" />              
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
+
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="apiDetailPagination.page"
+            v-model:page-size="apiDetailPagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next"
+            :total="apiDetailTab === 'current' ? filteredCurrentApiDetailRows.length : filteredLegacyApiDetailRows.length"
+            @size-change="handleApiDetailPageSizeChange"
+          />
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -176,8 +223,10 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
+import { apis, apps } from '@/mock/base';
 import {
   calcAuthorizationDelta,
+  fetchExistingSingleAppAuthorization,
   fetchSingleAppAuthEditor,
   fetchSingleAppAuthList,
   fetchSingleAppAuthorizationCreator,
@@ -186,40 +235,97 @@ import {
 } from '@/mock/auth';
 import type { AuthorizationAppOption, AuthorizationEditorData, SingleAppAuthorization } from '@/types/business';
 
-type DialogMode = 'create' | 'edit';
-
-const query = reactive({ caller_app_code: '', callee_app_code: '' });
+const query = reactive({ caller_app_code: '', caller_app_name: '', callee_app_code: '', callee_app_name: '' });
 const list = ref<SingleAppAuthorization[]>([]);
 const visible = ref(false);
-const dialogTitle = ref('修改授权');
-const dialogMode = ref<DialogMode>('edit');
+const dialogTitle = ref('授权配置');
 const appOptions = ref<AuthorizationAppOption[]>([]);
 const editorData = ref<AuthorizationEditorData | null>(null);
 const editingId = ref<number>();
+const lockAppPair = ref(false);
 const originalApiIds = ref<number[]>([]);
 const checkedApiIds = ref<number[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
-const activeGroups = ref<number[]>([]);
 const apiKeyword = ref('');
+const editorTab = ref('current');
 const form = reactive({ caller_app_code: '', callee_app_code: '' });
+const apiDetailVisible = ref(false);
+const currentApiDetail = ref<SingleAppAuthorization | null>(null);
+const apiDetailKeyword = ref('');
+const apiDetailTab = ref('current');
+const apiDetailPagination = reactive({ page: 1, pageSize: 10 });
 
-const delta = computed(() => calcAuthorizationDelta(originalApiIds.value, checkedApiIds.value));
+const allEditorApis = computed(() => [
+  ...(editorData.value?.current_apis || []),
+  ...(editorData.value?.legacy_apis || [])
+]);
+const delta = computed(() => calcAuthorizationDelta(originalApiIds.value, checkedApiIds.value, allEditorApis.value));
+const addedApiDetails = computed(() => {
+  const source = allEditorApis.value;
+  return delta.value.added_api_paths.map((path) => {
+    const target = source.find((item) => item.api_path === path);
+    return {
+      api_name: target?.api_name || path,
+      api_path: path
+    };
+  });
+});
+const revokedApiDetails = computed(() => {
+  const source = allEditorApis.value;
+  return delta.value.revoked_api_paths.map((path) => {
+    const target = source.find((item) => item.api_path === path);
+    return {
+      api_name: target?.api_name || path,
+      api_path: path
+    };
+  });
+});
 const pagedList = computed(() => {
   const start = (pagination.page - 1) * pagination.pageSize;
   return list.value.slice(start, start + pagination.pageSize);
 });
-const filteredApis = computed(() => {
+const filteredCurrentApis = computed(() => {
   const keyword = apiKeyword.value.trim();
-  const source = editorData.value?.apis || [];
+  const source = editorData.value?.current_apis || [];
   return source.filter((api) => !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword));
 });
+const filteredLegacyApis = computed(() => {
+  const keyword = apiKeyword.value.trim();
+  const source = editorData.value?.legacy_apis || [];
+  return source.filter((api) => !keyword || api.api_name.includes(keyword) || api.api_path.includes(keyword) || api.version.includes(keyword));
+});
+const apiKeywordPlaceholder = computed(() =>
+  editorTab.value === 'legacy' ? '搜索 API 名称、请求路径或版本号' : '搜索 API 名称或请求路径'
+);
+const callerAppOptions = computed(() =>
+  appOptions.value.filter((item) => item.app_code !== form.callee_app_code)
+);
 const calleeAppOptions = computed(() =>
   appOptions.value.filter((item) => item.app_code !== form.caller_app_code)
 );
-const hasQueryCondition = computed(() => Boolean(query.caller_app_code || query.callee_app_code));
+const hasQueryCondition = computed(() => Boolean(query.caller_app_code || query.caller_app_name || query.callee_app_code || query.callee_app_name));
 const emptyDescription = computed(() =>
-  hasQueryCondition.value ? '未找到匹配的授权关系，可点击“新增授权”开始配置' : '当前没有授权关系，可点击“新增授权”开始配置'
+  hasQueryCondition.value ? '未找到匹配的授权关系' : '当前没有授权关系，可点击“新增 / 修改授权”开始配置'
 );
+const currentApiDetailRows = computed(() => splitAuthorizedApiRows(currentApiDetail.value).current);
+const legacyApiDetailRows = computed(() => splitAuthorizedApiRows(currentApiDetail.value).legacy);
+const filteredCurrentApiDetailRows = computed(() => {
+  const keyword = apiDetailKeyword.value.trim();
+  return currentApiDetailRows.value.filter((item) => !keyword || item.api_name.includes(keyword) || item.api_path.includes(keyword));
+});
+const filteredLegacyApiDetailRows = computed(() => {
+  const keyword = apiDetailKeyword.value.trim();
+  return legacyApiDetailRows.value.filter((item) => !keyword || item.api_name.includes(keyword) || item.api_path.includes(keyword));
+});
+const currentDetailVersion = computed(() => getCurrentVersion(currentApiDetail.value));
+const pagedCurrentApiDetailRows = computed(() => {
+  const start = (apiDetailPagination.page - 1) * apiDetailPagination.pageSize;
+  return filteredCurrentApiDetailRows.value.slice(start, start + apiDetailPagination.pageSize);
+});
+const pagedLegacyApiDetailRows = computed(() => {
+  const start = (apiDetailPagination.page - 1) * apiDetailPagination.pageSize;
+  return filteredLegacyApiDetailRows.value.slice(start, start + apiDetailPagination.pageSize);
+});
 
 async function loadData() {
   const { data } = await fetchSingleAppAuthList(query);
@@ -230,7 +336,7 @@ async function loadData() {
 }
 
 function resetQuery() {
-  Object.assign(query, { caller_app_code: '', callee_app_code: '' });
+  Object.assign(query, { caller_app_code: '', caller_app_name: '', callee_app_code: '', callee_app_name: '' });
   pagination.page = 1;
   loadData();
 }
@@ -239,48 +345,54 @@ function handlePageSizeChange() {
   pagination.page = 1;
 }
 
+function handleApiDetailPageSizeChange() {
+  apiDetailPagination.page = 1;
+}
+
 function resetEditorState() {
   originalApiIds.value = [];
   checkedApiIds.value = [];
-  activeGroups.value = [];
   apiKeyword.value = '';
+  editingId.value = undefined;
+  lockAppPair.value = false;
+  editorTab.value = 'current';
+}
+
+function openApiDetail(row: SingleAppAuthorization) {
+  currentApiDetail.value = row;
+  apiDetailKeyword.value = '';
+  apiDetailPagination.page = 1;
+  apiDetailTab.value = splitAuthorizedApiRows(row).current.length ? 'current' : 'legacy';
+  apiDetailVisible.value = true;
 }
 
 function applyEditorData(data: AuthorizationEditorData, checkedIds?: number[]) {
   editorData.value = data;
   const nextCheckedIds = checkedIds ? [...checkedIds] : [...data.checked_api_ids];
-  originalApiIds.value = dialogMode.value === 'edit' ? [...nextCheckedIds] : [];
+  originalApiIds.value = [...nextCheckedIds];
   checkedApiIds.value = [...nextCheckedIds];
-  activeGroups.value = [];
   apiKeyword.value = '';
+  editorTab.value = data.current_apis.length ? 'current' : 'legacy';
 }
 
 async function openCreateDialog() {
   resetEditorState();
-  dialogMode.value = 'create';
-  dialogTitle.value = '新增授权';
-  editingId.value = undefined;
+  dialogTitle.value = '新增 / 修改授权';
 
   const { data } = await fetchSingleAppAuthorizationCreator();
   appOptions.value = data.app_options;
-  form.caller_app_code = data.app_options[0]?.app_code || '';
-  form.callee_app_code = data.app_options.find((item) => item.app_code !== form.caller_app_code)?.app_code || '';
-
-  if (form.callee_app_code) {
-    const optionsResponse = await fetchSingleAppAuthorizationOptions(form.callee_app_code);
-    applyEditorData(optionsResponse.data);
-  } else {
-    applyEditorData(data.data, []);
-  }
+  form.caller_app_code = '';
+  form.callee_app_code = '';
+  applyEditorData(data.data, []);
 
   visible.value = true;
 }
 
 async function openEditor(id: number) {
   resetEditorState();
-  dialogMode.value = 'edit';
-  dialogTitle.value = '修改授权';
+  dialogTitle.value = '授权配置';
   editingId.value = id;
+  lockAppPair.value = true;
 
   const { data } = await fetchSingleAppAuthEditor(id);
   appOptions.value = data.app_options;
@@ -291,37 +403,33 @@ async function openEditor(id: number) {
 }
 
 async function handleCalleeChange() {
-  // 新增场景切换被调用方时，需要重新装载该应用下可授权的 API 和分组。
-  if (!form.callee_app_code) {
-    applyEditorData({ apis: [], api_groups: [], checked_api_ids: [], checked_group_ids: [] }, []);
+  if (lockAppPair.value) {
+    return;
+  }
+  await syncPairAuthorization();
+}
+
+async function handleCallerChange() {
+  if (lockAppPair.value) {
+    return;
+  }
+  await syncPairAuthorization();
+}
+
+async function syncPairAuthorization() {
+  if (!form.caller_app_code || !form.callee_app_code) {
+    editingId.value = undefined;
+    applyEditorData({ current_apis: [], legacy_apis: [], checked_api_ids: [] }, []);
     return;
   }
 
-  const { data } = await fetchSingleAppAuthorizationOptions(form.callee_app_code);
-  applyEditorData(data, []);
-}
+  const [optionsResponse, existingResponse] = await Promise.all([
+    fetchSingleAppAuthorizationOptions(form.callee_app_code, form.caller_app_code),
+    fetchExistingSingleAppAuthorization(form.caller_app_code, form.callee_app_code)
+  ]);
 
-function getGroupApis(group: AuthorizationEditorData['api_groups'][number]) {
-  return editorData.value?.apis.filter((item) => group.api_ids.includes(item.id)) || [];
-}
-
-function isGroupChecked(group: AuthorizationEditorData['api_groups'][number]) {
-  return group.api_ids.length > 0 && group.api_ids.every((id) => checkedApiIds.value.includes(id));
-}
-
-function isGroupIndeterminate(group: AuthorizationEditorData['api_groups'][number]) {
-  const count = group.api_ids.filter((id) => checkedApiIds.value.includes(id)).length;
-  return count > 0 && count < group.api_ids.length;
-}
-
-function toggleGroup(group: AuthorizationEditorData['api_groups'][number], checked: string | number | boolean) {
-  const next = new Set(checkedApiIds.value);
-  if (checked) {
-    group.api_ids.forEach((id) => next.add(id));
-  } else {
-    group.api_ids.forEach((id) => next.delete(id));
-  }
-  checkedApiIds.value = Array.from(next);
+  editingId.value = existingResponse.data?.id;
+  applyEditorData(optionsResponse.data);
 }
 
 async function exportToExcel() {
@@ -370,11 +478,6 @@ async function submitEdit() {
     return;
   }
 
-  if (dialogMode.value === 'create' && form.caller_app_code === form.callee_app_code) {
-    ElMessage.warning('调用方应用和被调用方应用不能相同');
-    return;
-  }
-
   const response = await saveSingleAppAuthorization({
     id: editingId.value,
     caller_app_code: form.caller_app_code,
@@ -393,6 +496,37 @@ async function submitEdit() {
 }
 
 onMounted(loadData);
+
+function splitAuthorizedApiRows(record: SingleAppAuthorization | null) {
+  if (!record) {
+    return { current: [] as Array<{ api_name: string; api_path: string; version: string }>, legacy: [] as Array<{ api_name: string; api_path: string; version: string }> };
+  }
+  const app = apps.find((item) => item.app_code === record.callee_app_code);
+  const currentVersionApis = apis.filter((item) =>
+    item.app_code === record.callee_app_code &&
+    item.is_deleted === 0 &&
+    (!app?.current_version || item.version === app.current_version)
+  );
+  const currentPathSet = new Set(currentVersionApis.map((item) => item.api_path));
+  const toRow = (apiPath: string) => {
+    const matched = apis.find((item) => item.app_code === record.callee_app_code && item.api_path === apiPath)
+      || apis.find((item) => item.api_path === apiPath);
+    return {
+      api_name: matched?.api_name || '兼容旧版本 API',
+      api_path: apiPath,
+      version: matched?.version || '-'
+    };
+  };
+  return {
+    current: record.api_paths.filter((path) => currentPathSet.has(path)).map(toRow),
+    legacy: record.api_paths.filter((path) => !currentPathSet.has(path)).map(toRow)
+  };
+}
+
+function getCurrentVersion(record: SingleAppAuthorization | null) {
+  if (!record) return '-';
+  return apps.find((item) => item.app_code === record.callee_app_code)?.current_version || '-';
+}
 </script>
 
 <style scoped>
@@ -451,9 +585,16 @@ onMounted(loadData);
   font-size: 13px;
 }
 
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .auth-editor {
   display: grid;
-  grid-template-columns: 1fr 1.15fr 0.9fr;
+  grid-template-columns: 1.1fr 0.9fr;
   gap: 16px;
 }
 
@@ -516,6 +657,11 @@ onMounted(loadData);
   word-break: break-all;
 }
 
+.option-meta {
+  color: var(--sg-subtext);
+  font-size: 12px;
+}
+
 .change-summary {
   display: flex;
   align-items: center;
@@ -527,6 +673,13 @@ onMounted(loadData);
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+
+.change-empty {
+  display: flex;
+  align-items: center;
+  min-height: 120px;
 }
 
 .change-section-title {
@@ -551,6 +704,46 @@ onMounted(loadData);
   color: var(--sg-subtext);
   font-size: 13px;
 }
+
+.api-detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.count-link {
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.conflict-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.conflict-alert-box {
+  margin-top: 12px;
+}
+
+.conflict-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conflict-title {
+  color: var(--sg-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.conflict-desc {
+  color: var(--sg-subtext);
+  font-size: 13px;
+  line-height: 1.7;
+}
 </style>
-
-

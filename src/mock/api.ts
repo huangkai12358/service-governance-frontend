@@ -1,5 +1,5 @@
 import type { PageQuery } from '@/types/common';
-import { apiGroups, apis, apps } from './base';
+import { apis, apps } from './base';
 import { paginate, success, wait } from '@/utils/mock';
 
 export interface ApiListQuery extends PageQuery {
@@ -23,8 +23,7 @@ export async function fetchApiList(query: ApiListQuery) {
 
 export async function fetchApiOptions() {
   return wait(success({
-    apps: apps.filter((item) => item.is_deleted === 0),
-    apiGroups: apiGroups.filter((item) => item.is_deleted === 0)
+    apps: apps.filter((item) => item.is_deleted === 0)
   }));
 }
 
