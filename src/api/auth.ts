@@ -37,3 +37,9 @@ export function logout(payload: LogoutPayload) {
     throw error;
   });
 }
+
+export function checkSession() {
+  return request<void>('/api/auth/check', {
+    method: 'POST'
+  });
+}
