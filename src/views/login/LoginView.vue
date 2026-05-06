@@ -1,21 +1,92 @@
 <template>
   <div class="login-shell">
-    <div class="login-panel panel-card">
-      <div class="intro">
-        <!-- <el-tag type="primary" effect="dark">Basic Auth Mock</el-tag> -->
-        <h1>服务治理管理平台</h1>
-        <p>统一管理 API 资产、授权关系、SmartDoc 导入版本与远程调用日志。</p>
-      </div>
-      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" size="large">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" placeholder="请输入密码" show-password @keyup.enter="submit" />
-        </el-form-item>
-        <el-alert title="演示账号：admin / admin123（后端不可用时自动启用）" type="info" :closable="false" show-icon />
-        <el-button type="primary" class="submit-btn" :loading="submitting" @click="submit">登录系统</el-button>
-      </el-form>
+    <div class="login-content">
+      <section class="login-left">
+        <div class="brand-row">
+          <div class="brand-text"></div>
+        </div>
+
+        <div class="intro">
+          <p class="eyebrow">WELCOME BACK</p>
+          <h1>服务治理平台</h1>
+        </div>
+
+        <div class="login-panel">
+          <el-form ref="formRef" :model="form" :rules="rules" label-position="top" size="large">
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="form.username" placeholder="请输入用户名" />
+            </el-form-item>
+            <el-form-item label="密码" prop="password">
+              <el-input v-model="form.password" placeholder="请输入密码" show-password @keyup.enter="submit" />
+            </el-form-item>
+            <el-button type="primary" class="submit-btn" :loading="submitting" @click="submit">登录系统</el-button>
+          </el-form>
+        </div>
+      </section>
+
+      <section class="login-right">
+        <div class="visual-top">
+          <div>
+            <p class="visual-kicker">SERVICE GOVERNANCE</p>
+            <h2>服务治理</h2>
+          </div>
+          <div class="contact-meta"></div>
+        </div>
+
+        <div class="product-scene">
+          <div class="shape shape-blue"></div>
+          <div class="shape shape-pink"></div>
+          <div class="shape shape-gold"></div>
+          <div class="shape shape-ivory"></div>
+
+          <div class="scene-window">
+            <div class="window-bar">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="window-body">
+              <div class="window-sidebar">
+                <div class="window-dot active"></div>
+                <div class="window-dot"></div>
+                <div class="window-dot"></div>
+              </div>
+              <div class="window-main">
+                <div class="window-header">
+                  <p>服务治理 1/2</p>
+                  <div class="avatar-chip"></div>
+                </div>
+                <div class="flow-grid">
+                  <div class="flow-card success">
+                    <span>1</span>
+                    <p>接口管理</p>
+                  </div>
+                  <div class="flow-card warn">
+                    <span>2</span>
+                    <p>服务管理</p>
+                  </div>
+                  <div class="flow-card info">
+                    <span>3</span>
+                    <p>日志管理</p>
+                  </div>
+                  <div class="flow-card neutral">
+                    <span>4</span>
+                    <p>日志管理</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="floating-card status-card">
+            <div>
+              <strong>权限配置管理</strong>
+              <p>为当前每一个API接口配置访问的权限</p>
+            </div>
+            <div class="mini-gear">⚙</div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
