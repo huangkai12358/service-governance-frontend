@@ -4,7 +4,7 @@ export type ChangeType = '新增API' | '修改API' | '废弃API';
 
 export interface UserInfo {
   username: string;
-  token: string;
+  sessionToken: string;
 }
 
 export interface OverviewStats {
