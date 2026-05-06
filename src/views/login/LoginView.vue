@@ -13,8 +13,7 @@
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" placeholder="请输入密码" show-password @keyup.enter="submit" />
         </el-form-item>
-        <el-alert title="演示账号：admin / admin123" type="info" :closable="false" show-icon />
-        <el-button type="primary" class="submit-btn" @click="submit">登录系统</el-button>
+        <el-button type="primary" class="submit-btn" :loading="submitting" @click="submit">登录系统</el-button>
       </el-form>
     </div>
   </div>
@@ -24,16 +23,18 @@
 import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { login } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const formRef = ref<FormInstance>();
+const submitting = ref(false);
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123'
+  username: '',
+  password: ''
 });
 
 const rules: FormRules = {
@@ -44,16 +45,21 @@ const rules: FormRules = {
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
-  if (form.username === 'admin' && form.password === 'admin123') {
-    authStore.login({
+  try {
+    submitting.value = true;
+    const userInfo = await login({
       username: form.username,
-      token: btoa(`${form.username}:${form.password}`)
+      password: form.password
     });
+    authStore.login(userInfo);
     ElMessage.success('登录成功');
-    router.push((route.query.redirect as string) || '/dashboard');
-    return;
+    await router.push((route.query.redirect as string) || '/dashboard');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '登录失败';
+    ElMessage.error(message);
+  } finally {
+    submitting.value = false;
   }
-  ElMessage.error('用户名或密码错误');
 }
 </script>
 

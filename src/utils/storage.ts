@@ -1,16 +1,16 @@
-const TOKEN_KEY = 'sg_token';
+const SESSION_TOKEN_KEY = 'sg_session_token';
 const USER_KEY = 'sg_user';
 
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+export function getSessionToken() {
+  return localStorage.getItem(SESSION_TOKEN_KEY);
 }
 
-export function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+export function setSessionToken(sessionToken: string) {
+  localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
 }
 
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
+export function clearSessionToken() {
+  localStorage.removeItem(SESSION_TOKEN_KEY);
 }
 
 export function getStoredUser() {
