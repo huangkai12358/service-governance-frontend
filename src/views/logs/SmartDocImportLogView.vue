@@ -7,6 +7,7 @@
     <PageSearch :model="query" @search="loadData" @reset="resetQuery">
       <el-form-item label="日志 ID"><el-input v-model="query.api_version_id" clearable /></el-form-item>
       <el-form-item label="应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
+      <el-form-item label="应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
       <el-form-item label="版本号"><el-input v-model="query.version" clearable /></el-form-item>
       <el-form-item label="导入时间">
         <el-date-picker
@@ -21,10 +22,11 @@
     </PageSearch>
     <el-card class="panel-card smartdoc-log-card" shadow="never">
       <el-table :data="pagedList" border class="smartdoc-log-table">
-        <el-table-column label="日志 ID" width="170">
+        <el-table-column label="日志 ID" width="80">
           <template #default="{ row }">{{ row.api_version_id.toString() }}</template>
         </el-table-column>
         <el-table-column prop="app_code" label="应用编码" width="140" />
+        <el-table-column prop="app_name" label="应用名称" width="180" />
         <el-table-column prop="version" label="版本号" width="100" />
         <el-table-column prop="file_name" label="导入的 Smart Doc 文件名" min-width="180" />
         <el-table-column prop="file_path" label="Linux 文件系统中的存储路径" min-width="220" />
@@ -50,7 +52,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import PageSearch from '@/components/PageSearch.vue';
 import { fetchSmartDocImportLogs } from '@/mock/history';
 
-const query = reactive({ api_version_id: '', app_code: '', version: '', time_range: [] as string[] });
+const query = reactive({ api_version_id: '', app_code: '', app_name: '', version: '', time_range: [] as string[] });
 const list = ref<any[]>([]);
 const pagination = reactive({ page: 1, pageSize: 10 });
 const pagedList = computed(() => {
@@ -64,7 +66,7 @@ async function loadData() {
 }
 
 function resetQuery() {
-  Object.assign(query, { api_version_id: '', app_code: '', version: '', time_range: [] });
+  Object.assign(query, { api_version_id: '', app_code: '', app_name: '', version: '', time_range: [] });
   pagination.page = 1;
   loadData();
 }

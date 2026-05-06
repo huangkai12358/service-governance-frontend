@@ -20,6 +20,11 @@ const GENERATED_API_ID_BASE = 100000;
 const pad = (value: number, length = 2) => String(value).padStart(length, '0');
 const dateTime = (day: number, hour: number, minute: number) =>
   `2026-04-${pad(((day - 1) % 23) + 1)} ${pad(hour)}:${pad(minute)}:00`;
+const sequentialDateTime = (base: string, offsetMinutes: number) => {
+  const date = new Date(base);
+  date.setMinutes(date.getMinutes() + offsetMinutes);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
 
 const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE'];
 const resources = [
@@ -230,14 +235,14 @@ const toVersionDiff = (api: ApiItem): VersionDiffItem => ({
 
 export const versionHistories: VersionHistoryItem[] = apps.map((app, index) => ({
   id: index + 1,
-  api_version_id: BigInt(`20260422${pad(index + 1, 6)}`),
+  api_version_id: BigInt(index + 1),
   app_code: app.app_code,
   app_name: app.app_name,
   version: app.current_version,
   file_name: `${app.app_code}-smartdoc-20260422.json`,
   file_path: `/data/smartdoc/${app.app_code}/${app.app_code}-smartdoc-20260422.json`,
   remark: `${app.app_name} SmartDoc 文档同步，覆盖 ${API_PER_APP} 个 API`,
-  create_time: dateTime(index + 1, 9 + (index % 8), (index * 4) % 60)
+  create_time: sequentialDateTime('2026-04-01T09:00:00', index * 37)
 }));
 
 export const versionDetails: VersionDetail[] = versionHistories.map((version, index) => {
@@ -287,13 +292,15 @@ export const authConfigLogs: AuthConfigLogItem[] = Array.from({ length: 500 }, (
   const api = apis[(index * 13) % apis.length];
   const caller = apps[(index * 5) % apps.length];
   return {
-    auth_log_id: BigInt(`2026042308${pad(index + 1, 8)}`),
+    auth_log_id: BigInt(index + 1),
     caller_app_code: caller.app_code,
+    caller_app_name: caller.app_name,
     callee_app_code: api.app_code,
+    callee_app_name: api.app_name,
     api_name: api.api_name,
     api_path: api.api_path,
     operation_type: (index % 4 === 0 ? '撤销' : '新增') as AuthConfigLogItem['operation_type'],
-    log_time: dateTime(index + 1, 8 + (index % 12), (index * 7) % 60)
+    log_time: sequentialDateTime('2026-04-10T08:00:00', index * 11)
   };
 }).sort((a, b) => b.log_time.localeCompare(a.log_time));
 
@@ -301,6 +308,7 @@ export const smartDocImportLogs: SmartDocImportLogItem[] = versionHistories
   .map((item) => ({
     api_version_id: item.api_version_id,
     app_code: item.app_code,
+    app_name: item.app_name,
     version: item.version,
     file_name: item.file_name,
     file_path: item.file_path,
@@ -314,12 +322,14 @@ export const remoteCallLogs: RemoteCallLogItem[] = Array.from({ length: 800 }, (
   const callee = apps[(index * 11 + 1) % apps.length];
   const result = (['SUCCESS', 'FAIL', 'BYPASS'] as const)[index % 3];
   return {
-    call_decision_log_id: BigInt(`2026042310${pad(index + 1, 8)}`),
+    call_decision_log_id: BigInt(index + 1),
     caller_app_code: caller.app_code,
+    caller_app_name: caller.app_name,
     callee_app_code: callee.app_code,
+    callee_app_name: callee.app_name,
     result,
     decision_reason: result === 'SUCCESS' ? '授权关系命中，调用放行' : result === 'FAIL' ? '调用方未被授权访问目标 API' : '旁路策略命中，本次调用跳过鉴权',
-    log_time: dateTime(index + 1, 7 + (index % 14), (index * 5) % 60)
+    log_time: sequentialDateTime('2026-04-15T07:00:00', index * 9)
   };
 }).sort((a, b) => b.log_time.localeCompare(a.log_time));
 
