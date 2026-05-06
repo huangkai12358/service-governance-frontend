@@ -2,6 +2,7 @@ import { clearSessionToken, clearStoredUser, getSessionToken } from '@/utils/sto
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const LOGIN_EXPIRED_CODES = new Set([40102, 40103]);
+const SUCCESS_CODES = new Set([0, 200]);
 
 interface ApiResponse<T> {
   code: number;
@@ -38,7 +39,7 @@ export async function request<T>(url: string, options: RequestOptions = {}) {
   });
 
   const result = (await response.json()) as ApiResponse<T>;
-  if (result.code !== 0) {
+  if (!SUCCESS_CODES.has(result.code)) {
     if (LOGIN_EXPIRED_CODES.has(result.code)) {
       clearSessionToken();
       clearStoredUser();
