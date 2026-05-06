@@ -25,3 +25,9 @@ export function logout(payload: LogoutPayload) {
     skipAuth: true
   });
 }
+
+export function checkSession() {
+  return request<void>('/api/auth/check', {
+    method: 'POST'
+  });
+}

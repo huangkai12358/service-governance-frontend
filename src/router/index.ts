@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { checkSession } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 
 const routes = [
@@ -82,13 +83,27 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
   if (!to.meta.public && !authStore.isLoggedIn) {
     return { path: '/login', query: { redirect: to.fullPath } };
   }
+  if (!to.meta.public && authStore.isLoggedIn) {
+    try {
+      // 每次进入受保护页面前向后端确认当前 token 仍然有效，保证被顶掉后刷新立即失效。
+      await checkSession();
+    } catch {
+      authStore.logout();
+      return { path: '/login', query: { redirect: to.fullPath } };
+    }
+  }
   if (to.path === '/login' && authStore.isLoggedIn) {
-    return '/dashboard';
+    try {
+      await checkSession();
+      return '/dashboard';
+    } catch {
+      authStore.logout();
+    }
   }
   document.title = `${to.meta.title ?? '服务治理平台'} - 服务治理平台`;
 });
