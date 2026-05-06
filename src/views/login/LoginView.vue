@@ -13,6 +13,7 @@
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" placeholder="请输入密码" show-password @keyup.enter="submit" />
         </el-form-item>
+        <el-alert title="演示账号：admin / admin123（后端不可用时自动启用）" type="info" :closable="false" show-icon />
         <el-button type="primary" class="submit-btn" :loading="submitting" @click="submit">登录系统</el-button>
       </el-form>
     </div>

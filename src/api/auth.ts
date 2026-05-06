@@ -1,4 +1,6 @@
 import type { UserInfo } from '@/types/business';
+import { mockLogin, mockLogout } from '@/mock/login';
+import { shouldUseMockAuthFallback } from '@/utils/authFallback';
 import { request } from '@/utils/request';
 
 interface LoginPayload {
@@ -15,6 +17,11 @@ export function login(payload: LoginPayload) {
     method: 'POST',
     body: JSON.stringify(payload),
     skipAuth: true
+  }).catch((error) => {
+    if (shouldUseMockAuthFallback(error)) {
+      return mockLogin(payload);
+    }
+    throw error;
   });
 }
 
@@ -23,5 +30,10 @@ export function logout(payload: LogoutPayload) {
     method: 'POST',
     body: JSON.stringify(payload),
     skipAuth: true
+  }).catch((error) => {
+    if (shouldUseMockAuthFallback(error)) {
+      return mockLogout(payload);
+    }
+    throw error;
   });
 }
