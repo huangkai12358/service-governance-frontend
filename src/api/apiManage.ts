@@ -1,4 +1,4 @@
-import { apps as mockApps } from '@/mock/base';
+import { fetchAppOptions } from '@/api/appManage';
 import { request } from '@/utils/request';
 import type { HttpMethod } from '@/types/business';
 import type { PageResult } from '@/types/common';
@@ -74,8 +74,8 @@ function mapApiItem(item: ApiBackendItem): ApiManageItem {
     api_method: item.method,
     version: item.version || '-',
     api_description: item.description || '',
-    create_time: item.createTime,
-    update_time: item.updateTime
+    create_time: item.createTime ? item.createTime.replace('T', ' ') : '-',
+    update_time: item.updateTime ? item.updateTime.replace('T', ' ') : '-'
   };
 }
 
@@ -127,13 +127,6 @@ export async function saveApi(payload: ApiManagePayload) {
 }
 
 export async function fetchApiOptions() {
-  const apps: ApiAppOption[] = mockApps
-    .filter((item) => item.is_deleted === 0)
-    .map((item) => ({
-      id: item.id,
-      app_code: item.app_code,
-      app_name: item.app_name
-    }));
-
+  const apps: ApiAppOption[] = await fetchAppOptions();
   return { apps };
 }
