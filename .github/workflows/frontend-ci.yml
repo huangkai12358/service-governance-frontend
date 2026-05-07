@@ -1,40 +1,92 @@
+# 工作流名称
 name: Frontend CI
 
-# 触发条件：当代码推送到 main/master 分支，或发起 PR 时自动执行
+# 触发条件
 on:
+  # 当代码 push 到 main/master 分支时自动执行
   push:
     branches: [ "main", "master" ]
+
+  # 当提交 Pull Request 到 main/master 时自动执行
   pull_request:
     branches: [ "main", "master" ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 在最新的 Ubuntu 环境下运行
+    # 运行环境：GitHub 提供的 Ubuntu 虚拟机
+    runs-on: ubuntu-latest
 
     steps:
-    # 1. 拉取代码库
-    - name: Checkout code
-      uses: actions/checkout@v4
 
-    # 2. 配置 Node.js 环境
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20 # 根据你项目的情况，Node.js 20 是目前最稳定的长期支持版本
-        cache: 'npm'     # 开启 npm 缓存，加快以后的构建速度
+      # 第一步：拉取 GitHub 仓库代码到 Runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # 拉取完整 git 历史
+          # SonarCloud 分析代码变更时需要
+          fetch-depth: 0
 
-    # 3. 安装项目依赖
-    - name: Install dependencies
-      run: npm ci # 使用 npm ci 代替 npm install，它会严格按照 package-lock.json 安装，更稳定且速度更快
+      # 第二步：安装 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # 使用 Node.js 20 LTS 版本
+          node-version: 20
 
-    # 4. 执行类型检查与代码打包
-    - name: Build project
-      run: npm run build # 对应你 package.json 里的 vue-tsc -b && vite build
+          # 开启 npm 依赖缓存
+          # 加快后续 CI 构建速度
+          cache: npm
 
-    # 5. （可选）上传构建产物 (dist 目录)
-    # 这样你就可以在每次 Action 运行成功后，直接下载打包好的前端静态文件
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: frontend-dist
-        path: dist/
+      # 第三步：安装前端依赖
+      - name: Install dependencies
+        # 如果前端项目在 frontend 目录下
+        working-directory: frontend
+
+        # npm ci:
+        # 严格按照 package-lock.json 安装依赖
+        # 比 npm install 更稳定、更适合 CI
+        run: npm ci
+
+      # 第四步：构建前端项目
+      - name: Build project
+        working-directory: frontend
+
+        # 执行 package.json 中的 build 命令
+        # 一般对应：
+        # vue-tsc -b && vite build
+        #
+        # 包含：
+        # 1. TypeScript 类型检查
+        # 2. Vite 正式环境打包
+        run: npm run build
+
+      # 第五步：SonarCloud 代码质量扫描
+      - name: SonarCloud Scan
+
+        # 官方 SonarCloud GitHub Action
+        uses: SonarSource/sonarqube-scan-action@v6
+
+        # 环境变量
+        env:
+          # 从 GitHub Secrets 中读取 SONAR_TOKEN
+          # 避免 Token 泄露
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+        with:
+          # 指定 Sonar 扫描的项目目录
+          # 因为前端代码在 frontend 目录
+          projectBaseDir: frontend
+
+      # 第六步：上传前端构建产物
+      - name: Upload build artifacts
+
+        # GitHub 官方 Artifact 上传 Action
+        uses: actions/upload-artifact@v4
+
+        with:
+          # Artifact 名称
+          name: frontend-dist
+
+          # 上传 dist 打包目录
+          # 后续可以在 Actions 页面直接下载
+          path: frontend/dist/
