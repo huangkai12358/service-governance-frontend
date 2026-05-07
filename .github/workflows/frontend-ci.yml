@@ -39,9 +39,6 @@ jobs:
 
       # 第三步：安装前端依赖
       - name: Install dependencies
-        # 如果前端项目在 frontend 目录下
-        working-directory: frontend
-
         # npm ci:
         # 严格按照 package-lock.json 安装依赖
         # 比 npm install 更稳定、更适合 CI
@@ -49,8 +46,6 @@ jobs:
 
       # 第四步：构建前端项目
       - name: Build project
-        working-directory: frontend
-
         # 执行 package.json 中的 build 命令
         # 一般对应：
         # vue-tsc -b && vite build
@@ -73,9 +68,13 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
         with:
-          # 指定 Sonar 扫描的项目目录
-          # 因为前端代码在 frontend 目录
-          projectBaseDir: frontend
+          # SonarCloud 项目参数
+          args: >
+            -Dsonar.projectKey=huangkai12358_service-governance-frontend
+            -Dsonar.organization=huangkai12358
+            -Dsonar.projectName=service-governance-frontend
+            -Dsonar.sources=src
+            -Dsonar.exclusions=node_modules/**,dist/**
 
       # 第六步：上传前端构建产物
       - name: Upload build artifacts
@@ -89,4 +88,4 @@ jobs:
 
           # 上传 dist 打包目录
           # 后续可以在 Actions 页面直接下载
-          path: frontend/dist/
+          path: dist/
