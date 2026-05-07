@@ -283,12 +283,16 @@ const pendingPassword = computed(() =>
   editForm.slot1_state === 'new' || editForm.slot2_state === 'new'
 );
 
+const occupiedPasswordCount = computed(() =>
+  [editForm.slot1_state, editForm.slot2_state].filter((state) => state !== 'empty').length
+);
+
 const canAddPassword = computed(() =>
   !pendingPassword.value && (editForm.slot1_state === 'empty' || editForm.slot2_state === 'empty')
 );
 
-const canRemoveSlot1 = computed(() => editForm.slot1_state !== 'empty');
-const canRemoveSlot2 = computed(() => editForm.slot2_state !== 'empty');
+const canRemoveSlot1 = computed(() => occupiedPasswordCount.value === 2 && editForm.slot1_state !== 'empty');
+const canRemoveSlot2 = computed(() => occupiedPasswordCount.value === 2 && editForm.slot2_state !== 'empty');
 
 const slot1StatusText = computed(() => getSlotStatusText(editForm.slot1_state, 1));
 const slot2StatusText = computed(() => getSlotStatusText(editForm.slot2_state, 2));
@@ -452,7 +456,24 @@ async function handleAddPassword() {
   passwordFormRef.value?.clearValidate();
 }
 
-function handleRemovePassword(target: 'primary' | 'secondary') {
+async function handleRemovePassword(target: 'primary' | 'secondary') {
+  const canRemove = target === 'primary' ? canRemoveSlot1.value : canRemoveSlot2.value;
+  if (!canRemove) {
+    ElMessage.warning('至少需要保留一个密码，当前不能删除。');
+    return;
+  }
+
+  const passwordLabel = target === 'primary' ? '密码一' : '密码二';
+  try {
+    await ElMessageBox.confirm(`确认删除${passwordLabel}吗？`, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    });
+  } catch {
+    return;
+  }
+
   if (target === 'primary') {
     if (editForm.slot1_state === 'empty') {
       return;
