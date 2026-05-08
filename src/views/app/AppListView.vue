@@ -306,7 +306,7 @@ function getSlotStatusText(state: PasswordSlotState, slotNo: 1 | 2) {
   if (state === 'new') {
     return '待新增';
   }
-  return editForm[`initial_has_pwd${slotNo}` as const] ? '待删除' : '未配置';
+  return editForm[`delete_pwd${slotNo}` as const] ? '待删除' : '未配置';
 }
 
 function getSlotTagType(state: PasswordSlotState, slotNo: 1 | 2) {
@@ -316,7 +316,7 @@ function getSlotTagType(state: PasswordSlotState, slotNo: 1 | 2) {
   if (state === 'new') {
     return 'primary';
   }
-  return editForm[`initial_has_pwd${slotNo}` as const] ? 'danger' : 'info';
+  return editForm[`delete_pwd${slotNo}` as const] ? 'danger' : 'info';
 }
 
 async function loadData() {
