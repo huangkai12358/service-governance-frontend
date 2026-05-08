@@ -108,7 +108,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { fetchDashboard, updateAuthServiceSettings } from '@/mock/dashboard';
+import { fetchDashboard } from '@/mock/dashboard';
+import { fetchAuthServiceSettings, updateAuthServiceSettings } from '@/api/dashboard';
 import type { ActivityRecord, AuthServiceSettings, OverviewStats } from '@/types/business';
 
 const stats = ref<OverviewStats | null>(null);
@@ -163,10 +164,12 @@ async function handleModeChange(nextMode: AuthServiceSettings['mode']) {
 onMounted(async () => {
   const { data } = await fetchDashboard();
   stats.value = data.stats;
-  authSettings.value = data.auth_service_settings;
   imports.value = data.imports;
   auths.value = data.auths;
   calls.value = data.calls;
+
+  // 中文注释：首页其余区域仍沿用 mock 数据，鉴权服务设置单独读取真实后端，避免未完成接口影响整页加载。
+  authSettings.value = await fetchAuthServiceSettings();
 });
 </script>
 
