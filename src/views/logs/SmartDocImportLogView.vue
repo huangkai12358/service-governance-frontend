@@ -10,7 +10,6 @@
           v-model="query.app_code"
           clearable
           readonly
-          placeholder="点击选择应用编码"
           @clear="query.app_code = ''"
           @click="openSelector('app_code')"
         />
@@ -20,7 +19,6 @@
           v-model="query.app_name"
           clearable
           readonly
-          placeholder="点击选择应用名称"
           @clear="query.app_name = ''"
           @click="openSelector('app_name')"
         />
@@ -30,7 +28,6 @@
           v-model="query.version"
           clearable
           readonly
-          placeholder="点击选择版本号"
           @clear="query.version = ''"
           @click="openSelector('version')"
         />
@@ -88,7 +85,7 @@
             <div v-if="item.meta" class="selector-item-sub">{{ item.meta }}</div>
           </button>
         </div>
-        <el-empty v-else description="暂无匹配数据" :image-size="48" />
+        <el-empty v-else :description="selectorEmptyDescription" :image-size="48" />
       </div>
       <template #footer>
         <el-button @click="selectorVisible = false">关闭</el-button>
@@ -98,14 +95,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import PageSearch from '@/components/PageSearch.vue';
 import {
+  fetchSmartDocImportAppCodeOptions,
+  fetchSmartDocImportAppNameOptions,
   fetchSmartDocImportLogPage,
   fetchSmartDocImportVersionOptions,
   type SmartDocImportLogItem
 } from '@/api/logs';
-import { fetchAppOptions, type AppOption } from '@/api/appManage';
 
 interface SearchSuggestionItem {
   key: string;
@@ -119,11 +117,11 @@ const query = reactive({ app_code: '', app_name: '', version: '' });
 const list = ref<SmartDocImportLogItem[]>([]);
 const total = ref(0);
 const pagination = reactive({ page: 1, pageSize: 10 });
-const appOptions = ref<AppOption[]>([]);
-const versionOptions = ref<string[]>([]);
+const selectorOptions = ref<SearchSuggestionItem[]>([]);
 const selectorVisible = ref(false);
 const activeSelectorField = ref<SelectorField>('app_code');
 const selectorKeyword = ref('');
+let selectorSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * 当前激活字段对应的弹框标题。
@@ -144,48 +142,64 @@ const selectorTitle = computed(() => {
 const selectorPlaceholder = computed(() => `请输入${selectorTitle.value.replace('选择', '')}`);
 
 /**
- * 按当前激活字段构建基础候选列表。
+ * 根据当前远程查询结果直接渲染候选项。
  */
-const selectorOptions = computed<SearchSuggestionItem[]>(() => {
-  if (activeSelectorField.value === 'app_code') {
-    return appOptions.value.map((item) => ({
-      key: `app-code-${item.id}`,
-      value: item.app_code,
-      meta: item.app_name
-    }));
+const filteredSelectorOptions = computed(() => selectorOptions.value);
+
+/**
+ * 标记弹框内是否已经输入关键字，用于区分空态提示文案。
+ */
+const hasSelectorKeyword = computed(() => Boolean(selectorKeyword.value.trim()));
+
+/**
+ * 根据输入状态返回对应空态提示，避免未输入时误导为无数据。
+ */
+const selectorEmptyDescription = computed(() => (
+  hasSelectorKeyword.value ? '暂无匹配数据' : '请输入关键字后查询'
+));
+
+/**
+ * 按字段和关键字调用对应远程接口，空关键字时直接清空候选，避免一开始返回全量。
+ */
+async function searchSelectorOptions(field: SelectorField, keyword: string) {
+  const normalizedKeyword = keyword.trim();
+  if (!normalizedKeyword) {
+    selectorOptions.value = [];
+    return;
   }
-  if (activeSelectorField.value === 'app_name') {
-    return appOptions.value.map((item) => ({
-      key: `app-name-${item.id}`,
-      value: item.app_name,
-      meta: item.app_code
+
+  if (field === 'app_code') {
+    const options = await fetchSmartDocImportAppCodeOptions(normalizedKeyword);
+    selectorOptions.value = options.map((item) => ({
+      key: `app-code-${item}`,
+      value: item
     }));
+    return;
   }
-  return versionOptions.value.map((item) => ({
+
+  if (field === 'app_name') {
+    const options = await fetchSmartDocImportAppNameOptions(normalizedKeyword);
+    selectorOptions.value = options.map((item) => ({
+      key: `app-name-${item}`,
+      value: item
+    }));
+    return;
+  }
+
+  const options = await fetchSmartDocImportVersionOptions(normalizedKeyword);
+  selectorOptions.value = options.map((item) => ({
     key: `version-${item}`,
     value: item
   }));
-});
+}
 
 /**
- * 弹框内候选项统一按最左匹配过滤，并限制展示条数，保证大量数据时仍可浏览。
- */
-const filteredSelectorOptions = computed(() => {
-  const normalizedKeyword = selectorKeyword.value.trim().toLowerCase();
-  if (!normalizedKeyword) {
-    return selectorOptions.value.slice(0, 50);
-  }
-  return selectorOptions.value
-    .filter((item) => item.value.toLowerCase().startsWith(normalizedKeyword))
-    .slice(0, 50);
-});
-
-/**
- * 打开字段选择弹框时，带入当前字段并清空弹框内搜索条件。
+ * 打开字段选择弹框时不做全量预加载，只在用户输入后再远程查询。
  */
 function openSelector(field: SelectorField) {
   activeSelectorField.value = field;
-  selectorKeyword.value = query[field];
+  selectorKeyword.value = '';
+  selectorOptions.value = [];
   selectorVisible.value = true;
 }
 
@@ -198,17 +212,8 @@ function selectOption(item: SearchSuggestionItem) {
 }
 
 /**
- * 初始化页面候选数据，避免候选项受当前分页结果限制。
+ * 按当前筛选条件加载日志列表，候选选择完成后由查询按钮触发精确筛选。
  */
-async function loadOptions() {
-  const [appOptionList, versionOptionList] = await Promise.all([
-    fetchAppOptions(),
-    fetchSmartDocImportVersionOptions()
-  ]);
-  appOptions.value = appOptionList;
-  versionOptions.value = versionOptionList;
-}
-
 async function loadData() {
   const data = await fetchSmartDocImportLogPage({
     page: pagination.page,
@@ -221,25 +226,61 @@ async function loadData() {
   total.value = data.total;
 }
 
+/**
+ * 执行查询前回到第一页，避免沿用旧页码导致结果页为空。
+ */
 function handleSearch() {
   pagination.page = 1;
   loadData();
 }
 
+/**
+ * 重置三个筛选条件后重新查询第一页数据。
+ */
 function resetQuery() {
   Object.assign(query, { app_code: '', app_name: '', version: '' });
   pagination.page = 1;
   loadData();
 }
 
+/**
+ * 分页大小变化后重新加载第一页，保持分页状态一致。
+ */
 function handlePageSizeChange() {
   pagination.page = 1;
   loadData();
 }
 
 onMounted(async () => {
-  await loadOptions();
   await loadData();
+});
+
+watch(selectorKeyword, (keyword) => {
+  if (!selectorVisible.value) {
+    return;
+  }
+
+  if (selectorSearchTimer) {
+    clearTimeout(selectorSearchTimer);
+  }
+
+  selectorSearchTimer = setTimeout(() => {
+    searchSelectorOptions(activeSelectorField.value, keyword);
+  }, 200);
+});
+
+/**
+ * 关闭弹框时清空输入和候选，避免不同字段之间残留上一次查询状态。
+ */
+watch(selectorVisible, (visible) => {
+  if (!visible) {
+    selectorKeyword.value = '';
+    selectorOptions.value = [];
+    if (selectorSearchTimer) {
+      clearTimeout(selectorSearchTimer);
+      selectorSearchTimer = null;
+    }
+  }
 });
 </script>
 
