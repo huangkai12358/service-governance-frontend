@@ -9,5 +9,5 @@ export async function fetchRemoteCallLogs(query: {
   result?: string;
   time_range?: string[];
 }) {
-  return post<any[]>('/api/logs/check/list', query);
+  return post<any[]>('/api/logs/remote-call/list', query);
 }
