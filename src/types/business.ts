@@ -243,7 +243,7 @@ export interface AuthConfigLogItem {
   callee_app_name: string;
   api_name: string;
   api_path: string;
-  operation_type: '新增' | '撤销';
+  operation_type: '新增' | '删除';
   log_time: string;
 }
 

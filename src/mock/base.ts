@@ -299,7 +299,7 @@ export const authConfigLogs: AuthConfigLogItem[] = Array.from({ length: 500 }, (
     callee_app_name: api.app_name,
     api_name: api.api_name,
     api_path: api.api_path,
-    operation_type: (index % 4 === 0 ? '撤销' : '新增') as AuthConfigLogItem['operation_type'],
+    operation_type: (index % 4 === 0 ? '删除' : '新增') as AuthConfigLogItem['operation_type'],
     log_time: sequentialDateTime('2026-04-10T08:00:00', index * 11)
   };
 }).sort((a, b) => b.log_time.localeCompare(a.log_time));

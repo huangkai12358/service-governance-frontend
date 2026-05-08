@@ -11,7 +11,7 @@ export interface AuthConfigLogQuery {
   callee_app_name?: string;
   api_name?: string;
   api_path?: string;
-  operation_type?: '新增' | '撤销' | '修改' | '';
+  operation_type?: '新增' | '删除' | '';
   start_time?: string;
   end_time?: string;
 }
@@ -24,8 +24,12 @@ export interface AuthConfigLogItem {
   callee_app_name: string;
   api_name: string;
   api_path: string;
-  operation_type: '新增' | '撤销' | '修改';
+  operation_type: '新增' | '删除';
   log_time: string;
+}
+
+interface KeywordQuery {
+  keyword: string;
 }
 
 export interface SmartDocImportLogQuery {
@@ -75,7 +79,7 @@ interface AuthConfigLogBackendItem {
   calleeAppName: string | null;
   apiName: string | null;
   apiPath: string | null;
-  operationType: '新增' | '撤销' | '修改' | null;
+  operationType: '新增' | '删除' | null;
   logTime: string | null;
 }
 
@@ -102,6 +106,13 @@ function mapSmartDocImportLogItem(item: SmartDocImportLogBackendItem): SmartDocI
     importer_name: item.importerName || '',
     create_time: formatDateTime(item.createTime)
   };
+}
+
+/**
+ * 统一构造日志候选项查询请求体，保持所有日志接口调用风格一致。
+ */
+function buildKeywordQuery(keyword: string): KeywordQuery {
+  return { keyword };
 }
 
 /**
@@ -141,11 +152,9 @@ export async function fetchAuthConfigLogPage(
       apiPath: query.api_path || undefined,
       operationType: query.operation_type === '新增'
         ? 0
-        : query.operation_type === '撤销'
+        : query.operation_type === '删除'
           ? 1
-          : query.operation_type === '修改'
-            ? 2
-            : undefined,
+          : undefined,
       startTime: query.start_time || undefined,
       endTime: query.end_time || undefined
     })
@@ -160,41 +169,65 @@ export async function fetchAuthConfigLogPage(
 }
 
 export async function fetchAuthConfigCallerAppCodeOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/auth-config/caller-app-code-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/auth-config/caller-app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 export async function fetchAuthConfigCallerAppNameOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/auth-config/caller-app-name-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/auth-config/caller-app-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 export async function fetchAuthConfigCalleeAppCodeOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/auth-config/callee-app-code-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/auth-config/callee-app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 export async function fetchAuthConfigCalleeAppNameOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/auth-config/callee-app-name-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/auth-config/callee-app-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 export async function fetchAuthConfigApiNameOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/auth-config/api-name-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/auth-config/api-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 export async function fetchAuthConfigApiPathOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/auth-config/api-path-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/auth-config/api-path-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 /**
  * 查询 SmartDoc 导入历史页面使用的应用编码候选项。
  */
 export async function fetchSmartDocImportAppCodeOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/smartdoc-import/app-code-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/smartdoc-import/app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 /**
  * 查询 SmartDoc 导入历史页面使用的应用名称候选项。
  */
 export async function fetchSmartDocImportAppNameOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/smartdoc-import/app-name-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/smartdoc-import/app-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 /**
@@ -226,5 +259,8 @@ export async function fetchSmartDocImportLogPage(
  * 查询 SmartDoc 导入历史页面使用的版本号候选项。
  */
 export async function fetchSmartDocImportVersionOptions(keyword: string): Promise<string[]> {
-  return request<string[]>(`/api/logs/smartdoc-import/version-options?keyword=${encodeURIComponent(keyword)}`);
+  return request<string[]>('/api/logs/smartdoc-import/version-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
