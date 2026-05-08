@@ -1,5 +1,5 @@
 import { request } from '@/utils/request';
-import type { AuthServiceSettings, AuthServiceMode } from '@/types/business';
+import type { ActivityRecord, AuthServiceSettings, AuthServiceMode, OverviewStats } from '@/types/business';
 
 interface AuthServiceSettingsBackendResponse {
   mode: AuthServiceMode;
@@ -36,10 +36,49 @@ export interface DashboardTopologyData {
   categories: DashboardTopologyCategory[];
 }
 
+interface DashboardOverviewBackendResponse {
+  stats?: {
+    appTotal?: number;
+    apiTotal?: number;
+    authRelationTotal?: number;
+    smartDocImportTotal?: number;
+    todayCallTotal?: number;
+  };
+  authServiceSettings?: AuthServiceSettingsBackendResponse;
+  imports?: ActivityRecord[];
+  auths?: ActivityRecord[];
+  calls?: ActivityRecord[];
+}
+
 function mapAuthServiceSettings(data: AuthServiceSettingsBackendResponse): AuthServiceSettings {
   return {
     mode: data.mode,
     updated_at: data.updatedAt || ''
+  };
+}
+
+function mapOverviewStats(data: DashboardOverviewBackendResponse['stats'] = {}): OverviewStats {
+  return {
+    app_total: data.appTotal ?? 0,
+    api_total: data.apiTotal ?? 0,
+    auth_relation_total: data.authRelationTotal ?? 0,
+    smartdoc_import_total: data.smartDocImportTotal ?? 0,
+    today_call_total: data.todayCallTotal ?? 0
+  };
+}
+
+export async function fetchDashboard() {
+  const data = await request<DashboardOverviewBackendResponse>('/api/dashboard/overview', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+
+  return {
+    stats: mapOverviewStats(data.stats),
+    authServiceSettings: data.authServiceSettings ? mapAuthServiceSettings(data.authServiceSettings) : null,
+    imports: data.imports || [],
+    auths: data.auths || [],
+    calls: data.calls || []
   };
 }
 
