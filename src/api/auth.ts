@@ -39,7 +39,7 @@ export function logout(payload: LogoutPayload) {
 }
 
 export function checkSession() {
-  return request<void>('/api/auth/check', {
+  return request<void>('/api/auth/session/check', {
     method: 'POST'
   });
 }
