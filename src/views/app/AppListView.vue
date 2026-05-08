@@ -306,7 +306,7 @@ function getSlotStatusText(state: PasswordSlotState, slotNo: 1 | 2) {
   if (state === 'new') {
     return '待新增';
   }
-  return slotNo === 1 && editForm[`initial_has_pwd${slotNo}` as const] ? '待删除' : '未配置';
+  return editForm[`initial_has_pwd${slotNo}` as const] ? '待删除' : '未配置';
 }
 
 function getSlotTagType(state: PasswordSlotState, slotNo: 1 | 2) {
