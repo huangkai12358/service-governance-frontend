@@ -117,18 +117,23 @@ const rules: FormRules = {
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
+  submitting.value = true;
   try {
-    submitting.value = true;
-    const userInfo = await login({
+    const data = await login({
       username: form.username,
       password: form.password
     });
-    authStore.login(userInfo);
+    // 只有真实后端返回 sessionToken 后才写入 Pinia 和 localStorage，避免离线状态进入系统。
+    authStore.login({
+      username: data.username,
+      sessionToken: data.sessionToken
+    });
     ElMessage.success('登录成功');
-    await router.push((route.query.redirect as string) || '/dashboard');
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '登录失败';
-    ElMessage.error(message);
+    const redirect = route.query.redirect as string | undefined;
+    await router.replace(redirect && !redirect.startsWith('/login') ? redirect : '/dashboard');
+    return;
+  } catch {
+    ElMessage.error('用户名或密码错误');
   } finally {
     submitting.value = false;
   }

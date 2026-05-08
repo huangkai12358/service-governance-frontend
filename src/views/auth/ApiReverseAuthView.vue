@@ -430,7 +430,7 @@ const importedReviewRows = computed(() =>
 async function loadData() {
   const { data } = await fetchReverseAuthApiList(query);
   list.value = data;
-  const visibleIds = new Set(data.map((item) => item.api_id));
+  const visibleIds = new Set(data.map((item: ReverseAuthListItem) => item.api_id));
   Array.from(selectedRowMap.value.keys()).forEach((id) => {
     if (!visibleIds.has(id)) {
       selectedRowMap.value.delete(id);

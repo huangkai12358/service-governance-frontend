@@ -223,7 +223,6 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { apis, apps } from '@/mock/base';
 import {
   calcAuthorizationDelta,
   fetchExistingSingleAppAuthorization,
@@ -501,31 +500,22 @@ function splitAuthorizedApiRows(record: SingleAppAuthorization | null) {
   if (!record) {
     return { current: [] as Array<{ api_name: string; api_path: string; version: string }>, legacy: [] as Array<{ api_name: string; api_path: string; version: string }> };
   }
-  const app = apps.find((item) => item.app_code === record.callee_app_code);
-  const currentVersionApis = apis.filter((item) =>
-    item.app_code === record.callee_app_code &&
-    item.is_deleted === 0 &&
-    (!app?.current_version || item.version === app.current_version)
-  );
-  const currentPathSet = new Set(currentVersionApis.map((item) => item.api_path));
-  const toRow = (apiPath: string) => {
-    const matched = apis.find((item) => item.app_code === record.callee_app_code && item.api_path === apiPath)
-      || apis.find((item) => item.api_path === apiPath);
-    return {
-      api_name: matched?.api_name || '兼容旧版本 API',
-      api_path: apiPath,
-      version: matched?.version || '-'
-    };
+  const rows = ((record as any).api_rows || []) as Array<{ api_name: string; api_path: string; version: string }>;
+  const currentVersion = (record as any).current_version || '-';
+  const toRow = (apiPath: string) => rows.find((item) => item.api_path === apiPath) || {
+    api_name: '兼容旧版本 API',
+    api_path: apiPath,
+    version: '-'
   };
   return {
-    current: record.api_paths.filter((path) => currentPathSet.has(path)).map(toRow),
-    legacy: record.api_paths.filter((path) => !currentPathSet.has(path)).map(toRow)
+    current: record.api_paths.map(toRow).filter((item) => item.version === currentVersion || currentVersion === '-'),
+    legacy: record.api_paths.map(toRow).filter((item) => item.version !== currentVersion && currentVersion !== '-')
   };
 }
 
 function getCurrentVersion(record: SingleAppAuthorization | null) {
   if (!record) return '-';
-  return apps.find((item) => item.app_code === record.callee_app_code)?.current_version || '-';
+  return (record as any).current_version || '-';
 }
 </script>
 

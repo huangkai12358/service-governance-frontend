@@ -397,7 +397,10 @@ async function analyze() {
 }
 
 async function confirmImport() {
-  const { data, message } = await confirmSmartDocImport();
+  const { data, message } = await confirmSmartDocImport({
+    version: draft.version,
+    remark: draft.remark
+  });
   importResult.value = data;
   resultVisible.value = true;
   authMeta.callee_app_code = draft.app_code || data.additions?.[0]?.app_code || '';
