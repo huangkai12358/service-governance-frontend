@@ -2,7 +2,6 @@
   <div class="page-container">
     <div class="page-title">
       <h2>SmartDoc 导入历史记录</h2>
-      <p>查看应用编码、版本号、导入文件名、存储路径和备注信息。</p>
     </div>
     <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="应用编码">
