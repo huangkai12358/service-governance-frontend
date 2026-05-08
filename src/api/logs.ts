@@ -52,6 +52,27 @@ export interface SmartDocImportLogItem {
   create_time: string;
 }
 
+export interface RemoteCallLogQuery {
+  page: number;
+  pageSize: number;
+  caller_app_code?: string;
+  caller_app_name?: string;
+  callee_app_code?: string;
+  callee_app_name?: string;
+  result?: 'SUCCESS' | 'FAIL' | 'BYPASS' | '';
+}
+
+export interface RemoteCallLogItem {
+  call_decision_log_id: number;
+  caller_app_code: string;
+  caller_app_name: string;
+  callee_app_code: string;
+  callee_app_name: string;
+  result: 'SUCCESS' | 'FAIL' | 'BYPASS';
+  decision_reason: string;
+  log_time: string;
+}
+
 interface SmartDocImportLogBackendItem {
   apiVersionId: number;
   appCode: string | null;
@@ -90,6 +111,24 @@ interface AuthConfigLogBackendResponse {
   records: AuthConfigLogBackendItem[];
 }
 
+interface RemoteCallLogBackendItem {
+  callDecisionLogId: number;
+  callerAppCode: string | null;
+  callerAppName: string | null;
+  calleeAppCode: string | null;
+  calleeAppName: string | null;
+  result: 'SUCCESS' | 'FAIL' | 'BYPASS' | null;
+  decisionReason: string | null;
+  logTime: string | null;
+}
+
+interface RemoteCallLogBackendResponse {
+  total: number;
+  pageNum: number;
+  pageSize: number;
+  records: RemoteCallLogBackendItem[];
+}
+
 function formatDateTime(value: string | null | undefined) {
   return value ? value.replace('T', ' ') : '-';
 }
@@ -105,6 +144,22 @@ function mapSmartDocImportLogItem(item: SmartDocImportLogBackendItem): SmartDocI
     remark: item.remark || '',
     importer_name: item.importerName || '',
     create_time: formatDateTime(item.createTime)
+  };
+}
+
+/**
+ * 将后端返回的远程调用历史记录转换为前端稳定使用的结构。
+ */
+function mapRemoteCallLogItem(item: RemoteCallLogBackendItem): RemoteCallLogItem {
+  return {
+    call_decision_log_id: item.callDecisionLogId,
+    caller_app_code: item.callerAppCode || '',
+    caller_app_name: item.callerAppName || '',
+    callee_app_code: item.calleeAppCode || '',
+    callee_app_name: item.calleeAppName || '',
+    result: item.result || 'SUCCESS',
+    decision_reason: item.decisionReason || '',
+    log_time: formatDateTime(item.logTime)
   };
 }
 
@@ -260,6 +315,67 @@ export async function fetchSmartDocImportLogPage(
  */
 export async function fetchSmartDocImportVersionOptions(keyword: string): Promise<string[]> {
   return request<string[]>('/api/logs/smartdoc-import/version-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 分页查询远程调用历史记录。
+ */
+export async function fetchRemoteCallLogPage(
+  query: RemoteCallLogQuery
+): Promise<PageResult<RemoteCallLogItem>> {
+  const data = await request<RemoteCallLogBackendResponse>('/api/logs/remote-call/list', {
+    method: 'POST',
+    body: JSON.stringify({
+      pageNum: query.page,
+      pageSize: query.pageSize,
+      callerAppCode: query.caller_app_code || undefined,
+      callerAppName: query.caller_app_name || undefined,
+      calleeAppCode: query.callee_app_code || undefined,
+      calleeAppName: query.callee_app_name || undefined,
+      result: query.result === 'SUCCESS'
+        ? 0
+        : query.result === 'FAIL'
+          ? 1
+          : query.result === 'BYPASS'
+            ? 2
+            : undefined
+    })
+  });
+
+  return {
+    list: data.records.map(mapRemoteCallLogItem),
+    total: data.total,
+    page: data.pageNum,
+    pageSize: data.pageSize
+  };
+}
+
+export async function fetchRemoteCallCallerAppCodeOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/logs/remote-call/caller-app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+export async function fetchRemoteCallCallerAppNameOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/logs/remote-call/caller-app-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+export async function fetchRemoteCallCalleeAppCodeOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/logs/remote-call/callee-app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+export async function fetchRemoteCallCalleeAppNameOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/logs/remote-call/callee-app-name-options', {
     method: 'POST',
     body: JSON.stringify(buildKeywordQuery(keyword))
   });
