@@ -169,8 +169,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { addAppPassword, deleteApp, fetchAppList, removeAppPassword, saveApp } from '@/mock/app';
-import { apis } from '@/mock/base';
+import { addAppPassword, deleteApp, fetchAppDetail, fetchAppList, removeAppPassword, saveApp } from '@/mock/app';
 import type { AppEditorPayload, AppItem } from '@/types/business';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '' });
@@ -202,7 +201,7 @@ const passwordForm = reactive({ password: '' });
 const allApis = ref<any[]>([]);
 
 const detailApis = computed(() =>
-  allApis.value.filter((item) => item.app_code === detail.value?.app_code && item.is_deleted === 0)
+  allApis.value
 );
 
 const pagedDetailApis = computed(() => {
@@ -267,6 +266,9 @@ function showDetail(row: AppItem) {
   detail.value = row;
   Object.assign(detailQuery, { page: 1, pageSize: 10 });
   detailVisible.value = true;
+  fetchAppDetail(row.id).then(({ data }) => {
+    allApis.value = data?.apis || [];
+  });
 }
 
 function exportDetailToExcel() {
@@ -395,15 +397,13 @@ async function handleRemovePassword(target: 'primary' | 'secondary') {
 
 async function handleDelete(row: AppItem) {
   await ElMessageBox.confirm(`确认删除 APP「${row.app_name}」吗？`, '删除确认', { type: 'warning' });
-  const { message } = await deleteApp();
+  const { message } = await deleteApp(row.id);
   ElMessage.success(message);
+  await loadData();
 }
 
 onMounted(loadData);
 
-onMounted(async () => {
-  allApis.value = apis;
-});
 </script>
 
 <style scoped>
