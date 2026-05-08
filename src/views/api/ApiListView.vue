@@ -4,7 +4,7 @@
       <h2>API列表</h2>
       <p>按应用编码、应用名称、API 名称、请求路径和版本号管理 API 资产。</p>
     </div>
-    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+    <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
       <el-form-item label="应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
       <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
@@ -184,6 +184,11 @@ async function loadData() {
   } finally {
     loading.value = false;
   }
+}
+
+function handleSearch() {
+  query.page = 1;
+  loadData();
 }
 
 function resetQuery() {

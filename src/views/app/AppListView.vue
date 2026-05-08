@@ -5,7 +5,7 @@
       <p>管理应用编码、名称、密码槽位状态与基础说明。</p>
     </div>
 
-    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+    <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="应用编码">
         <el-input v-model="query.app_code" clearable />
       </el-form-item>
@@ -331,6 +331,11 @@ async function loadData() {
   } finally {
     loading.value = false;
   }
+}
+
+function handleSearch() {
+  query.page = 1;
+  loadData();
 }
 
 function resetQuery() {

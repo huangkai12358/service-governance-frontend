@@ -21,11 +21,18 @@ export async function fetchSingleAppAuthList(query: {
   caller_app_name?: string;
   callee_app_code?: string;
   callee_app_name?: string;
+  page?: number;
+  pageSize?: number;
 }) {
   const response = await post<any>('/api/auth/single-app/list', toCamelQuery(query));
   return {
     ...response,
-    data: (response.data?.records || []).map(toSingleAppSnake)
+    data: {
+      list: (response.data?.records || []).map(toSingleAppSnake),
+      total: response.data?.total || 0,
+      page: response.data?.current || query.page || 1,
+      pageSize: response.data?.size || query.pageSize || 10
+    }
   };
 }
 
@@ -64,7 +71,7 @@ export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string, 
   const caller = appOptions.find((item) => item.app_code === callerAppCode);
   const apiList = await post<any>('/api/apis/list', {
     pageNum: 1,
-    pageSize: 1000,
+    pageSize: 100,
     appCode: calleeAppCode
   });
   let checkedIds: number[] = [];
@@ -142,11 +149,18 @@ export async function fetchReverseAuthApiList(query: {
   app_name?: string;
   api_name?: string;
   api_path?: string;
+  page?: number;
+  pageSize?: number;
 }) {
   const response = await post<any>('/api/auth/reverse/list', toCamelQuery(query));
   return {
     ...response,
-    data: (response.data?.records || []).map(toReverseSnake)
+    data: {
+      list: (response.data?.records || []).map(toReverseSnake),
+      total: response.data?.total || 0,
+      page: response.data?.current || query.page || 1,
+      pageSize: response.data?.size || query.pageSize || 10
+    }
   };
 }
 
@@ -276,7 +290,7 @@ function toReverseSnake(item: any) {
     api_name: item.apiName,
     path: item.apiPath || item.path,
     api_path: item.apiPath || item.path,
-    method: item.apiMethod || item.method,
+    api_method: item.apiMethod || item.api_method || item.method,
     app_code: item.appCode,
     app_name: item.appName,
     authorized_app_count: item.authorizedAppCount || 0

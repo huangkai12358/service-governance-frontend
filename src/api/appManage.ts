@@ -43,17 +43,20 @@ interface AppBackendItem {
   appId: number;
   appCode: string;
   appName: string;
-  hasPwd1: boolean;
-  hasPwd2: boolean;
-  description: string | null;
+  appDescription?: string | null;
+  description?: string | null;
+  primaryPassword?: string | null;
+  secondaryPassword?: string | null;
   createTime: string | null;
   updateTime: string | null;
 }
 
 interface AppListBackendResponse {
   total: number;
-  pageNum: number;
-  pageSize: number;
+  pageNum?: number;
+  pageSize?: number;
+  current?: number;
+  size?: number;
   records: AppBackendItem[];
 }
 
@@ -72,9 +75,9 @@ function mapAppItem(item: AppBackendItem): AppManageItem {
     id: item.appId,
     app_code: item.appCode,
     app_name: item.appName,
-    has_pwd1: Boolean(item.hasPwd1),
-    has_pwd2: Boolean(item.hasPwd2),
-    app_description: item.description || '',
+    has_pwd1: Boolean(item.primaryPassword),
+    has_pwd2: Boolean(item.secondaryPassword),
+    app_description: item.appDescription || item.description || '',
     create_time: formatDateTime(item.createTime),
     update_time: formatDateTime(item.updateTime)
   };
@@ -94,19 +97,25 @@ export async function fetchAppList(query: AppManageQuery): Promise<PageResult<Ap
   return {
     list: data.records.map(mapAppItem),
     total: data.total,
-    page: data.pageNum,
-    pageSize: data.pageSize
+    page: data.pageNum ?? data.current ?? query.page,
+    pageSize: data.pageSize ?? data.size ?? query.pageSize
   };
 }
 
 export async function fetchAppDetail(appId: number): Promise<AppManageDetail> {
-  const data = await request<AppBackendItem>(`/api/app/detail?appId=${appId}`);
+  const data = await request<AppBackendItem>('/api/app/detail', {
+    method: 'POST',
+    body: JSON.stringify({ appId })
+  });
   return mapAppItem(data);
 }
 
 export async function fetchAppOptions(): Promise<AppOption[]> {
-  const data = await request<AppOptionBackendItem[]>('/api/app/options');
-  return data.map((item) => ({
+  const data = await request<{ apps: AppOptionBackendItem[] }>('/api/app/options', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  return data.apps.map((item) => ({
     id: item.appId,
     app_code: item.appCode,
     app_name: item.appName
