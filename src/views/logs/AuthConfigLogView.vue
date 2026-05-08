@@ -2,7 +2,7 @@
   <div class="page-container">
     <div class="page-title">
       <h2>权限配置历史记录</h2>
-      <p>查看授权新增和撤销操作日志。</p>
+      <p>查看授权新增和删除操作日志。</p>
     </div>
     <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="调用方应用编码">
