@@ -206,10 +206,18 @@ async function submit() {
 .brand-text span {
   color: #7783ab;
   font-size: 13px;
+
+
+
+
+
+
+
 }
 
 .intro {
   margin-bottom: 34px;
+
 }
 
 .eyebrow {
@@ -238,6 +246,9 @@ async function submit() {
 
 .login-panel {
   width: min(100%, 420px);
+
+
+
 }
 
 .login-panel :deep(.el-form-item) {
@@ -644,6 +655,7 @@ async function submit() {
 
   .intro-copy {
     font-size: 15px;
+
   }
 
   .login-right {

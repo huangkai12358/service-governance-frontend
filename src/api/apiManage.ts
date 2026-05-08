@@ -1,3 +1,4 @@
+import { fetchAppOptions } from '@/api/appManage';
 import { request } from '@/utils/request';
 import type { HttpMethod } from '@/types/business';
 import type { PageResult } from '@/types/common';
@@ -75,8 +76,8 @@ function mapApiItem(item: ApiBackendItem): ApiManageItem {
     api_method: item.method,
     version: item.version || '-',
     api_description: item.description || '',
-    create_time: item.createTime,
-    update_time: item.updateTime
+    create_time: item.createTime ? item.createTime.replace('T', ' ') : '-',
+    update_time: item.updateTime ? item.updateTime.replace('T', ' ') : '-'
   };
 }
 
@@ -131,15 +132,6 @@ export async function saveApi(payload: ApiManagePayload) {
 }
 
 export async function fetchApiOptions() {
-  const data = await request<{ apps: Array<{ id?: number; appId?: number; appCode: string; appName: string }> }>('/api/app/options', {
-    method: 'POST',
-    body: JSON.stringify({})
-  });
-  const apps: ApiAppOption[] = data.apps.map((item) => ({
-    id: item.appId || item.id || 0,
-    app_code: item.appCode,
-    app_name: item.appName
-  }));
-
+  const apps: ApiAppOption[] = await fetchAppOptions();
   return { apps };
 }
