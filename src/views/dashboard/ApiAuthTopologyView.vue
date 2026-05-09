@@ -124,9 +124,40 @@ const drawerTitle = ref('');
 const drawerNodeData = ref<NodeDrawerData | null>(null);
 const drawerEdgeData = ref<EdgeDrawerData | null>(null);
 
+/** 控制每个节点在原有大小计算结果上的整体缩放比例。 */
+const NODE_SYMBOL_SIZE_SCALE = 0.4;
+/** 控制拓扑图首次渲染时的默认缩放比例。 */
+const INITIAL_TOPOLOGY_ZOOM = 1.0;
+/** 控制节点之间的排斥强度，数值越大节点间距越松散。 */
+const TOPOLOGY_FORCE_REPULSION = 260;
+/** 控制节点向中心聚拢的强度，数值越小整体越不容易挤在中心。 */
+const TOPOLOGY_FORCE_GRAVITY = 0.08;
+/** 控制授权关系连线两端节点的期望距离。 */
+const TOPOLOGY_FORCE_EDGE_LENGTH: [number, number] = [150, 220];
+/** 控制授权关系连线的最小宽度。 */
+const TOPOLOGY_LINK_MIN_WIDTH = 0.25;
+/** 控制授权关系连线的最大宽度。 */
+const TOPOLOGY_LINK_MAX_WIDTH = 2.6;
+
 function generateNodeColor(index: number): string {
   const hue = (index * 137.508) % 360;
   return `hsl(${Math.round(hue)}, 45%, 55%)`;
+}
+
+/**
+ * 按照节点 API 数量占比计算图形尺寸，并通过统一缩放系数控制整体节点大小。
+ */
+function calculateNodeSymbolSize(nodeValue: number, maxNodeValue: number, minSize: number, maxSize: number): number {
+  const baseSize = minSize + ((nodeValue / maxNodeValue) * (maxSize - minSize));
+  return baseSize * NODE_SYMBOL_SIZE_SCALE;
+}
+
+/**
+ * 按照授权 API 数量占比计算连线宽度，并限制在统一的细线范围内。
+ */
+function calculateLinkLineWidth(linkValue: number, maxLinkValue: number): number {
+  return TOPOLOGY_LINK_MIN_WIDTH
+    + ((linkValue / maxLinkValue) * (TOPOLOGY_LINK_MAX_WIDTH - TOPOLOGY_LINK_MIN_WIDTH));
 }
 
 function buildChartOption(topology: DashboardTopologyData): echarts.EChartsOption {
@@ -166,11 +197,11 @@ function buildChartOption(topology: DashboardTopologyData): echarts.EChartsOptio
         name: 'API 授权拓扑',
         type: 'graph',
         layout: 'force',
-        zoom: 0.6,
+        zoom: INITIAL_TOPOLOGY_ZOOM,
         force: {
-          repulsion: 150,
-          gravity: 0.1,
-          edgeLength: [80, 160],
+          repulsion: TOPOLOGY_FORCE_REPULSION,
+          gravity: TOPOLOGY_FORCE_GRAVITY,
+          edgeLength: TOPOLOGY_FORCE_EDGE_LENGTH,
           friction: 0.6,
           layoutAnimation: false
         },
@@ -181,7 +212,7 @@ function buildChartOption(topology: DashboardTopologyData): echarts.EChartsOptio
           displayName: node.label,
           value: node.value,
           category: node.category,
-          symbolSize: minSize + ((node.value / maxDegree) * (maxSize - minSize)),
+          symbolSize: calculateNodeSymbolSize(node.value, maxDegree, minSize, maxSize),
           label: {
             show: true,
             position: 'bottom' as const,
@@ -202,7 +233,7 @@ function buildChartOption(topology: DashboardTopologyData): echarts.EChartsOptio
           apiPaths: link.apiPaths,
           apiDetails: link.apiDetails,
           lineStyle: {
-            width: 0.5 + (link.value / maxWeight) * 4.5,
+            width: calculateLinkLineWidth(link.value, maxWeight),
             color: 'rgba(29, 78, 216, 0.3)',
             curveness: 0.2,
             opacity: 0.65
