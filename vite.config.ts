@@ -16,7 +16,7 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true
       },
-      '^/api/smartdoc/(upload|parse|diffPreview|confirm)(/|$)': {
+      '^/api/smartdoc(/|$)': {
         target: 'http://localhost:8081',
         changeOrigin: true
       }
