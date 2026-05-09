@@ -3,6 +3,7 @@ import type {
   AuthorizationDelta,
   AuthorizationEditorData,
   HttpMethod,
+  ReverseAuthListItem,
   SingleAppAuthorizationEditorPayload
 } from '@/types/business';
 
@@ -47,7 +48,7 @@ export async function fetchSingleAppAuthEditor(id: number) {
     ...detail,
     data: {
       current: toSingleAppSnake(detail.data),
-      app_options: toAppOptions(apps.data?.apps || []),
+      app_options: toAppOptions(readAppOptionItems(apps.data)),
       data: toEditorData(detail.data)
     }
   };
@@ -58,7 +59,7 @@ export async function fetchSingleAppAuthorizationCreator() {
   return {
     ...apps,
     data: {
-      app_options: toAppOptions(apps.data?.apps || []),
+      app_options: toAppOptions(readAppOptionItems(apps.data)),
       data: { current_apis: [], legacy_apis: [], checked_api_ids: [] }
     }
   };
@@ -66,7 +67,7 @@ export async function fetchSingleAppAuthorizationCreator() {
 
 export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string, callerAppCode?: string) {
   const apps = await post<any>('/api/app/options', {});
-  const appOptions = toAppOptions(apps.data?.apps || []);
+  const appOptions = toAppOptions(readAppOptionItems(apps.data));
   const callee = appOptions.find((item) => item.app_code === calleeAppCode);
   const caller = appOptions.find((item) => item.app_code === callerAppCode);
   const apiList = await post<any>('/api/apis/list', {
@@ -95,7 +96,7 @@ export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string, 
 
 export async function fetchExistingSingleAppAuthorization(callerAppCode: string, calleeAppCode: string) {
   const apps = await post<any>('/api/app/options', {});
-  const appOptions = toAppOptions(apps.data?.apps || []);
+  const appOptions = toAppOptions(readAppOptionItems(apps.data));
   const caller = appOptions.find((item) => item.app_code === callerAppCode);
   const callee = appOptions.find((item) => item.app_code === calleeAppCode);
   if (!caller?.id || !callee?.id) {
@@ -133,7 +134,7 @@ export async function saveSingleAppAuthorization(payload: SingleAppAuthorization
   let calleeAppId = (payload as any).calleeAppId;
   if (!callerAppId || !calleeAppId) {
     const apps = await post<any>('/api/app/options', {});
-    const appOptions = toAppOptions(apps.data?.apps || []);
+    const appOptions = toAppOptions(readAppOptionItems(apps.data));
     callerAppId = appOptions.find((item) => item.app_code === (payload as any).caller_app_code)?.id;
     calleeAppId = appOptions.find((item) => item.app_code === (payload as any).callee_app_code)?.id;
   }
@@ -165,21 +166,42 @@ export async function fetchReverseAuthApiList(query: {
 }
 
 export async function fetchReverseAuthEditor(apiIds: number[]) {
-  const [apps, ...details] = await Promise.all([
+  const detailPayload = apiIds.length === 1 ? { apiId: apiIds[0] } : { apiIds };
+  const [apps, detail] = await Promise.all([
     post<any>('/api/app/options', {}),
-    ...apiIds.map((apiId) => post<any>('/api/authorization/reverse/detail', { apiId }))
+    post<any>('/api/authorization/reverse/detail', detailPayload)
   ]);
-  const selected = details.map((detail) => toReverseApiSnake(detail.data?.api)).filter(isReverseApi);
-  const checked = details.length
-    ? details[0].data?.apps?.map((item: any) => item.appCode || item.app_code) || []
-    : [];
+  const selected = (detail.data?.selectedApis || detail.data?.selected_apis || [detail.data?.api])
+    .map(toReverseApiSnake)
+    .filter(isReverseApi);
+  const checked = detail.data?.apps?.map((item: any) => item.appCode || item.app_code) || [];
   return {
     code: 0,
     message: 'success',
     data: {
       selected_apis: selected,
-      apps: toAppOptions(apps.data?.apps || []),
+      apps: toAppOptions(readAppOptionItems(apps.data)),
       checked_app_codes: checked
+    }
+  };
+}
+
+export async function fetchReverseAuthBatchEditor(rows: ReverseAuthListItem[]) {
+  const apps = await post<any>('/api/app/options', {});
+  return {
+    code: 0,
+    message: 'success',
+    data: {
+      selected_apis: rows.map((item) => ({
+        id: item.api_id,
+        api_name: item.api_name,
+        api_path: item.api_path,
+        api_method: item.api_method,
+        app_code: item.app_code,
+        app_name: item.app_name
+      })),
+      apps: toAppOptions(readAppOptionItems(apps.data)),
+      checked_app_codes: []
     }
   };
 }
@@ -239,6 +261,14 @@ function toAppOptions(items: any[]) {
     app_code: item.appCode || item.app_code,
     app_name: item.appName || item.app_name
   }));
+}
+
+function readAppOptionItems(data: any) {
+  // 兼容当前后端直接返回数组，以及旧 mock 结构 { apps: [] }。
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return data?.apps || [];
 }
 
 function toEditorApi(item: any) {
