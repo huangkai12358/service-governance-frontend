@@ -303,7 +303,7 @@ import DiffCard from '@/components/DiffCard.vue';
 import { analyzeSmartDoc, confirmSmartDocImport } from '@/api/smartdoc';
 import { RequestError } from '@/utils/request';
 import { fetchAppOptions } from '@/api/appManage';
-import { saveReverseAuthorization } from '@/mock/auth';
+import { saveReverseAuthorization } from '@/api/authorization';
 
 interface AuthApiItem {
   id: number;
@@ -598,6 +598,7 @@ function restartAuthorize() {
 
 async function confirmAuthorize() {
   console.log('authMap', authAssignments.value);
+  try {
 
   for (const assignment of authAssignments.value) {
     const selectedApis = assignment.api_ids
@@ -623,6 +624,10 @@ async function confirmAuthorize() {
   ElMessage.success('新增 API 授权成功');
   authVisible.value = false;
   resetAuthorizeState();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'API 反向授权失败，请稍后重试';
+    ElMessage.error(message);
+  }
 }
 
 function closeAuthorizeDialog() {
