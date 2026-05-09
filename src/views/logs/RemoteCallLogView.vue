@@ -4,6 +4,7 @@
       <h2>远程调用历史记录</h2>
     </div>
     <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
+      <el-form-item label="日志 ID"><el-input v-model="query.call_decision_log_id" clearable /></el-form-item>
       <el-form-item label="调用方应用编码">
         <el-input
           v-model="query.caller_app_code"
@@ -120,7 +121,8 @@ import {
   fetchRemoteCallCallerAppCodeOptions,
   fetchRemoteCallCallerAppNameOptions,
   fetchRemoteCallLogPage,
-  type RemoteCallLogItem
+  type RemoteCallLogItem,
+  type RemoteCallLogQuery
 } from '@/api/logs';
 
 interface SearchSuggestionItem {
@@ -135,7 +137,10 @@ type SelectorField =
   | 'callee_app_code'
   | 'callee_app_name';
 
-const query = reactive({
+type RemoteCallLogSearchQuery = Omit<RemoteCallLogQuery, 'page' | 'pageSize'>;
+
+const query = reactive<RemoteCallLogSearchQuery>({
+  call_decision_log_id: '',
   caller_app_code: '',
   caller_app_name: '',
   callee_app_code: '',
@@ -246,6 +251,7 @@ async function loadData() {
   const data = await fetchRemoteCallLogPage({
     page: pagination.page,
     pageSize: pagination.pageSize,
+    call_decision_log_id: query.call_decision_log_id,
     caller_app_code: query.caller_app_code,
     caller_app_name: query.caller_app_name,
     callee_app_code: query.callee_app_code,
@@ -266,6 +272,7 @@ function handleSearch() {
 
 function resetQuery() {
   Object.assign(query, {
+    call_decision_log_id: '',
     caller_app_code: '',
     caller_app_name: '',
     callee_app_code: '',

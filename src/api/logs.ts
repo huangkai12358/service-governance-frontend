@@ -55,6 +55,7 @@ export interface SmartDocImportLogItem {
 export interface RemoteCallLogQuery {
   page: number;
   pageSize: number;
+  call_decision_log_id?: string;
   caller_app_code?: string;
   caller_app_name?: string;
   callee_app_code?: string;
@@ -331,6 +332,7 @@ export async function fetchRemoteCallLogPage(
     body: JSON.stringify({
       pageNum: query.page,
       pageSize: query.pageSize,
+      callDecisionLogId: query.call_decision_log_id || undefined,
       callerAppCode: query.caller_app_code || undefined,
       callerAppName: query.caller_app_name || undefined,
       calleeAppCode: query.callee_app_code || undefined,
