@@ -45,6 +45,8 @@ interface AppBackendItem {
   appName: string;
   appDescription?: string | null;
   description?: string | null;
+  hasPwd1?: boolean | number | null;
+  hasPwd2?: boolean | number | null;
   primaryPassword?: string | null;
   secondaryPassword?: string | null;
   createTime: string | null;
@@ -75,12 +77,16 @@ function mapAppItem(item: AppBackendItem): AppManageItem {
     id: item.appId,
     app_code: item.appCode,
     app_name: item.appName,
-    has_pwd1: Boolean(item.primaryPassword),
-    has_pwd2: Boolean(item.secondaryPassword),
+    has_pwd1: toBoolean(item.hasPwd1 ?? item.primaryPassword),
+    has_pwd2: toBoolean(item.hasPwd2 ?? item.secondaryPassword),
     app_description: item.appDescription || item.description || '',
     create_time: formatDateTime(item.createTime),
     update_time: formatDateTime(item.updateTime)
   };
+}
+
+function toBoolean(value: boolean | number | string | null | undefined) {
+  return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 export async function fetchAppList(query: AppManageQuery): Promise<PageResult<AppManageItem>> {
