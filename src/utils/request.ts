@@ -25,7 +25,10 @@ interface RequestOptions extends RequestInit {
 
 export async function request<T>(url: string, options: RequestOptions = {}) {
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (!isFormDataBody && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const sessionToken = getSessionToken();
   if (!options.skipAuth && sessionToken) {
