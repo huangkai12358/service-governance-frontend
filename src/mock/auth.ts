@@ -24,7 +24,7 @@ export async function fetchSingleAppAuthList(query: {
   page?: number;
   pageSize?: number;
 }) {
-  const response = await post<any>('/api/auth/single-app/list', toCamelQuery(query));
+  const response = await post<any>('/api/authorization/single-app/list', toCamelQuery(query));
   return {
     ...response,
     data: {
@@ -40,7 +40,7 @@ export async function fetchSingleAppAuthEditor(id: number) {
   const callerAppId = Math.floor(id / 1000000);
   const calleeAppId = id % 1000000;
   const [detail, apps] = await Promise.all([
-    post<any>('/api/auth/single-app/detail', { callerAppId, calleeAppId }),
+    post<any>('/api/authorization/single-app/detail', { callerAppId, calleeAppId }),
     post<any>('/api/app/options', {})
   ]);
   return {
@@ -76,7 +76,7 @@ export async function fetchSingleAppAuthorizationOptions(calleeAppCode: string, 
   });
   let checkedIds: number[] = [];
   if (caller?.id && callee?.id) {
-    const detail = await post<any>('/api/auth/single-app/detail', {
+    const detail = await post<any>('/api/authorization/single-app/detail', {
       callerAppId: caller.id,
       calleeAppId: callee.id
     });
@@ -101,7 +101,7 @@ export async function fetchExistingSingleAppAuthorization(callerAppCode: string,
   if (!caller?.id || !callee?.id) {
     return { code: 0, message: 'success', data: null };
   }
-  const detail = await post<any>('/api/auth/single-app/detail', {
+  const detail = await post<any>('/api/authorization/single-app/detail', {
     callerAppId: caller.id,
     calleeAppId: callee.id
   });
@@ -137,7 +137,7 @@ export async function saveSingleAppAuthorization(payload: SingleAppAuthorization
     callerAppId = appOptions.find((item) => item.app_code === (payload as any).caller_app_code)?.id;
     calleeAppId = appOptions.find((item) => item.app_code === (payload as any).callee_app_code)?.id;
   }
-  return post<boolean>('/api/auth/single-app/save', {
+  return post<boolean>('/api/authorization/single-app/save', {
     callerAppId,
     calleeAppId,
     apiIds: (payload as any).checked_api_ids || (payload as any).apiIds || []
@@ -152,7 +152,7 @@ export async function fetchReverseAuthApiList(query: {
   page?: number;
   pageSize?: number;
 }) {
-  const response = await post<any>('/api/auth/reverse/list', toCamelQuery(query));
+  const response = await post<any>('/api/authorization/reverse/list', toCamelQuery(query));
   return {
     ...response,
     data: {
@@ -167,7 +167,7 @@ export async function fetchReverseAuthApiList(query: {
 export async function fetchReverseAuthEditor(apiIds: number[]) {
   const [apps, ...details] = await Promise.all([
     post<any>('/api/app/options', {}),
-    ...apiIds.map((apiId) => post<any>('/api/auth/reverse/detail', { apiId }))
+    ...apiIds.map((apiId) => post<any>('/api/authorization/reverse/detail', { apiId }))
   ]);
   const selected = details.map((detail) => toReverseApiSnake(detail.data?.api)).filter(isReverseApi);
   const checked = details.length
@@ -185,7 +185,7 @@ export async function fetchReverseAuthEditor(apiIds: number[]) {
 }
 
 export async function fetchReverseAuthorizedTargetDetail(apiId: number) {
-  const response = await post<any>('/api/auth/reverse/detail', { apiId });
+  const response = await post<any>('/api/authorization/reverse/detail', { apiId });
   const api = toReverseApiSnake(response.data?.api);
   return {
     ...response,
@@ -207,7 +207,7 @@ export async function fetchReverseAuthorizedTargetDetail(apiId: number) {
 }
 
 export async function saveReverseAuthorization(payload: ReverseAuthorizationSavePayload) {
-  return post<boolean>('/api/auth/reverse/save', {
+  return post<boolean>('/api/authorization/reverse/save', {
     selected_apis: payload.selected_apis.map((item) => ({
       apiId: item.id,
       apiPath: item.api_path,
