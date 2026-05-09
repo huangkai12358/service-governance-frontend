@@ -111,11 +111,12 @@ export async function fetchAppDetail(appId: number): Promise<AppManageDetail> {
 }
 
 export async function fetchAppOptions(): Promise<AppOption[]> {
-  const data = await request<{ apps: AppOptionBackendItem[] }>('/api/app/options', {
+  const data = await request<AppOptionBackendItem[] | { apps: AppOptionBackendItem[] }>('/api/app/options', {
     method: 'POST',
     body: JSON.stringify({})
   });
-  return data.apps.map((item) => ({
+  const apps = Array.isArray(data) ? data : data.apps;
+  return apps.map((item) => ({
     id: item.appId,
     app_code: item.appCode,
     app_name: item.appName

@@ -52,6 +52,46 @@ export interface SmartDocImportLogItem {
   create_time: string;
 }
 
+export interface RemoteCallLogQuery {
+  page: number;
+  pageSize: number;
+  call_decision_log_id?: string;
+  caller_app_code?: string;
+  caller_app_name?: string;
+  callee_app_code?: string;
+  callee_app_name?: string;
+  result?: 'SUCCESS' | 'FAIL' | 'BYPASS' | '';
+}
+
+export interface RemoteCallLogItem {
+  call_decision_log_id: number;
+  caller_app_code: string;
+  caller_app_name: string;
+  callee_app_code: string;
+  callee_app_name: string;
+  result: string;
+  decision_reason: string;
+  log_time: string;
+}
+
+interface RemoteCallLogBackendItem {
+  callDecisionLogId: number;
+  callerAppCode: string | null;
+  callerAppName: string | null;
+  calleeAppCode: string | null;
+  calleeAppName: string | null;
+  result: string | null;
+  decisionReason: string | null;
+  logTime: string | null;
+}
+
+interface RemoteCallLogBackendResponse {
+  total: number;
+  pageNum: number;
+  pageSize: number;
+  records: RemoteCallLogBackendItem[];
+}
+
 interface SmartDocImportLogBackendItem {
   apiVersionId: number;
   appCode: string | null;
@@ -105,6 +145,19 @@ function mapSmartDocImportLogItem(item: SmartDocImportLogBackendItem): SmartDocI
     remark: item.remark || '',
     importer_name: item.importerName || '',
     create_time: formatDateTime(item.createTime)
+  };
+}
+
+function mapRemoteCallLogItem(item: RemoteCallLogBackendItem): RemoteCallLogItem {
+  return {
+    call_decision_log_id: item.callDecisionLogId,
+    caller_app_code: item.callerAppCode || '',
+    caller_app_name: item.callerAppName || '',
+    callee_app_code: item.calleeAppCode || '',
+    callee_app_name: item.calleeAppName || '',
+    result: item.result || '',
+    decision_reason: item.decisionReason || '',
+    log_time: formatDateTime(item.logTime)
   };
 }
 
@@ -208,6 +261,34 @@ export async function fetchAuthConfigApiPathOptions(keyword: string): Promise<st
     method: 'POST',
     body: JSON.stringify(buildKeywordQuery(keyword))
   });
+}
+
+/**
+ * 分页查询远程调用历史记录。
+ */
+export async function fetchRemoteCallLogPage(
+  query: RemoteCallLogQuery
+): Promise<PageResult<RemoteCallLogItem>> {
+  const data = await request<RemoteCallLogBackendResponse>('/api/logs/remote-call/list', {
+    method: 'POST',
+    body: JSON.stringify({
+      pageNum: query.page,
+      pageSize: query.pageSize,
+      callDecisionLogId: query.call_decision_log_id || undefined,
+      callerAppCode: query.caller_app_code || undefined,
+      callerAppName: query.caller_app_name || undefined,
+      calleeAppCode: query.callee_app_code || undefined,
+      calleeAppName: query.callee_app_name || undefined,
+      result: query.result === 'SUCCESS' ? 0 : query.result === 'FAIL' ? 1 : query.result === 'BYPASS' ? 2 : undefined
+    })
+  });
+
+  return {
+    list: data.records.map(mapRemoteCallLogItem),
+    total: data.total,
+    page: data.pageNum,
+    pageSize: data.pageSize
+  };
 }
 
 /**

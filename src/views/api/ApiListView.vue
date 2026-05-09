@@ -168,8 +168,13 @@ const editRules: FormRules = {
 };
 
 async function loadOptions() {
-  const data = await fetchApiOptions();
-  options.apps = data.apps;
+  try {
+    const data = await fetchApiOptions();
+    options.apps = data.apps;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '加载应用下拉选项失败';
+    ElMessage.error(message);
+  }
 }
 
 async function loadData() {
@@ -280,8 +285,7 @@ async function submitEdit() {
 }
 
 onMounted(async () => {
-  await loadOptions();
-  await loadData();
+  await Promise.all([loadOptions(), loadData()]);
 });
 </script>
 

@@ -4,7 +4,7 @@
       <h2>远程调用历史记录</h2>
       <p>查看远程调用鉴权结果、判定原因和日志时间。</p>
     </div>
-    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+    <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="日志 ID"><el-input v-model="query.call_decision_log_id" clearable /></el-form-item>
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
       <el-form-item label="调用方应用名称"><el-input v-model="query.caller_app_name" clearable /></el-form-item>
@@ -16,16 +16,6 @@
           <el-option label="FAIL" value="FAIL" />
           <el-option label="BYPASS" value="BYPASS" />
         </el-select>
-      </el-form-item>
-      <el-form-item label="日志时间">
-        <el-date-picker
-          v-model="query.time_range"
-          type="datetimerange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          range-separator="至"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-        />
       </el-form-item>
     </PageSearch>
     <el-card class="panel-card" shadow="never">
@@ -49,7 +39,8 @@
           v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
-          :total="list.length"
+          :total="total"
+          @current-change="loadData"
           @size-change="handlePageSizeChange"
         />
       </div>
@@ -58,30 +49,39 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import PageSearch from '@/components/PageSearch.vue';
 import StatusTag from '@/components/StatusTag.vue';
-import { fetchRemoteCallLogs } from '@/mock/logs';
+import { fetchRemoteCallLogPage, type RemoteCallLogItem, type RemoteCallLogQuery } from '@/api/logs';
 
-const query = reactive({
+type RemoteCallLogSearchQuery = Omit<RemoteCallLogQuery, 'page' | 'pageSize'>;
+
+const query = reactive<RemoteCallLogSearchQuery>({
   call_decision_log_id: '',
   caller_app_code: '',
   caller_app_name: '',
   callee_app_code: '',
   callee_app_name: '',
-  result: '',
-  time_range: [] as string[]
+  result: ''
 });
-const list = ref<any[]>([]);
+const list = ref<RemoteCallLogItem[]>([]);
+const total = ref(0);
 const pagination = reactive({ page: 1, pageSize: 10 });
-const pagedList = computed(() => {
-  const start = (pagination.page - 1) * pagination.pageSize;
-  return list.value.slice(start, start + pagination.pageSize);
-});
+const pagedList = list;
 
 async function loadData() {
-  const { data } = await fetchRemoteCallLogs(query);
-  list.value = data;
+  const data = await fetchRemoteCallLogPage({
+    ...query,
+    page: pagination.page,
+    pageSize: pagination.pageSize
+  });
+  list.value = data.list;
+  total.value = data.total;
+}
+
+function handleSearch() {
+  pagination.page = 1;
+  loadData();
 }
 
 function resetQuery() {
@@ -91,8 +91,7 @@ function resetQuery() {
     caller_app_name: '',
     callee_app_code: '',
     callee_app_name: '',
-    result: '',
-    time_range: []
+    result: ''
   });
   pagination.page = 1;
   loadData();
@@ -100,6 +99,7 @@ function resetQuery() {
 
 function handlePageSizeChange() {
   pagination.page = 1;
+  loadData();
 }
 
 onMounted(loadData);
