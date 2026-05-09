@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-container">
     <div class="page-header">
       <div class="page-title">
@@ -17,7 +17,7 @@
     <el-card class="panel-card" shadow="never">
       <div class="table-toolbar">
         <el-button type="primary" @click="openCreateDialog">新增 / 修改授权</el-button>
-        <el-button type="primary" @click="exportToExcel">导出为 Excel</el-button>
+        <el-button type="primary" :loading="exportLoading" @click="exportToExcel">导出为 Excel</el-button>
       </div>
       <template v-if="list.length">
         <el-table :data="pagedList" border>
@@ -224,6 +224,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
+import { getSessionToken } from '@/utils/storage';
 import {
   calcAuthorizationDelta,
   fetchExistingSingleAppAuthorization,
@@ -443,39 +444,66 @@ async function syncPairAuthorization() {
   applyEditorData(optionsResponse.data);
 }
 
+const exportLoading = ref(false);
+
 async function exportToExcel() {
-  const headers = ['调用方应用编码', '被调用方应用编码', '授权API'];
-  const rows = list.value.flatMap((item) => {
-    if (!item.api_paths.length) {
-      return [[item.caller_app_code, item.callee_app_code, '']];
+  // 防止重复点击
+  if (exportLoading.value) {
+    return;
+  }
+  exportLoading.value = true;
+  ElMessage.info('正在导出，请稍候...');
+
+  try {
+    // 构建与后端一致的查询参数（携带当前搜索条件，不带分页）
+    const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8081';
+    // 获取当前登录会话令牌，确保导出请求通过后端认证拦截器
+    const sessionToken = getSessionToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (sessionToken) {
+      headers['sessionToken'] = sessionToken;
+    }
+    const response = await fetch(`${API_BASE_URL}/api/authorization/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        callerAppCode: query.caller_app_code || undefined,
+        callerAppName: query.caller_app_name || undefined,
+        calleeAppCode: query.callee_app_code || undefined,
+        calleeAppName: query.callee_app_name || undefined
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`导出失败：${response.status}`);
     }
 
-    return item.api_paths.map((apiPath) => [
-      item.caller_app_code,
-      item.callee_app_code,
-      apiPath
-    ]);
-  });
+    // 从响应头中提取文件名，若无则使用默认名
+    const disposition = response.headers.get('Content-Disposition') || '';
+    let fileName = '单个应用授权.xlsx';
+    const match = disposition.match(/filename\*=UTF-8''(.+)/);
+    if (match) {
+      fileName = decodeURIComponent(match[1]);
+    }
 
-  const escapeCell = (value: unknown) => {
-    const text = String(value ?? '').replace(/"/g, '""');
-    return `"${text}"`;
-  };
+    // 将响应体转为 Blob 并触发浏览器下载
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
-  const csvContent = [
-    headers.map(escapeCell).join(','),
-    ...rows.map((row) => row.map(escapeCell).join(','))
-  ].join('\n');
-
-  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'authorization_export.csv';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    ElMessage.success('导出成功');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '导出失败';
+    ElMessage.error(message);
+  } finally {
+    exportLoading.value = false;
+  }
 }
 
 async function submitEdit() {
