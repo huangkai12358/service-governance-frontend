@@ -309,7 +309,7 @@ import {
   fetchReverseAuthEditor,
   fetchReverseAuthorizedTargetDetail,
   saveReverseAuthorization
-} from '@/mock/auth';
+} from '@/api/authorization';
 import type { ReverseAuthorizedTargetDetail, ReverseAuthEditorData, ReverseAuthListItem } from '@/types/business';
 import type { HttpMethod } from '@/types/business';
 
@@ -655,7 +655,8 @@ async function submit(mode: 'continue' | 'finish' | 'default') {
     return;
   }
 
-  const { code, message } = await saveReverseAuthorization({
+  try {
+    const { code, message } = await saveReverseAuthorization({
     selected_apis: editorData.value.selected_apis.map((item) => ({
       id: item.id,
       api_path: item.api_path,
@@ -663,22 +664,27 @@ async function submit(mode: 'continue' | 'finish' | 'default') {
     })),
     checked_app_codes: checkedAppCodes.value,
     original_app_codes: originalAppCodes.value
-  });
+    });
 
-  if (code !== 0) {
+    if (code !== 0) {
+      ElMessage.error(message);
+      return;
+    }
+
+    ElMessage.success(message);
+    visible.value = false;
+    editorData.value = null;
+    await loadData();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'API 反向授权保存失败';
     ElMessage.error(message);
-    return;
   }
-
-  ElMessage.success(message);
-  visible.value = false;
-  editorData.value = null;
-  await loadData();
 }
 
 async function confirmImportedReview() {
-  for (const assignment of importedAssignments.value) {
-    const selectedApis = assignment.api_ids
+  try {
+    for (const assignment of importedAssignments.value) {
+      const selectedApis = assignment.api_ids
       .map((id) => importedApiMap.value.get(id))
       .filter(Boolean)
       .map((item) => ({
@@ -686,24 +692,28 @@ async function confirmImportedReview() {
         api_path: item!.api_path,
         app_code: item!.app_code
       }));
-    const { code, message } = await saveReverseAuthorization({
-      selected_apis: selectedApis,
-      checked_app_codes: [assignment.app_code],
-      original_app_codes: []
-    });
-    if (code !== 0) {
-      ElMessage.error(message);
-      return;
+      const { code, message } = await saveReverseAuthorization({
+        selected_apis: selectedApis,
+        checked_app_codes: [assignment.app_code],
+        original_app_codes: []
+      });
+      if (code !== 0) {
+        ElMessage.error(message);
+        return;
+      }
     }
-  }
 
   ElMessage.success('新增 API 授权确认成功');
-  visible.value = false;
-  editorData.value = null;
-  clearImportedFlowState();
-  clearBaseQueryAndSelection();
-  await loadData();
-  await router.replace({ path: '/auth/api-reverse' });
+    visible.value = false;
+    editorData.value = null;
+    clearImportedFlowState();
+    clearBaseQueryAndSelection();
+    await loadData();
+    await router.replace({ path: '/auth/api-reverse' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '新增 API 反向授权失败';
+    ElMessage.error(message);
+  }
 }
 
 async function restartImportedReview() {
