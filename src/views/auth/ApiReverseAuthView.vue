@@ -5,7 +5,7 @@
       <p>按 API 资源反向分配调用方应用。适合将新增 API 批量授权给指定应用。</p>
     </div>
 
-    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+    <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="所属应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
       <el-form-item label="所属应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
       <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
@@ -46,7 +46,8 @@
           v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
-          :total="list.length"
+          :total="total"
+          @current-change="loadData"
           @size-change="handlePageSizeChange"
         />
       </div>
@@ -324,6 +325,7 @@ const route = useRoute();
 const router = useRouter();
 const query = reactive({ app_code: '', app_name: '', api_name: '', api_path: '' });
 const list = ref<ReverseAuthListItem[]>([]);
+const total = ref(0);
 const selectedRows = ref<ReverseAuthListItem[]>([]);
 const selectedRowMap = ref(new Map<number, ReverseAuthListItem>());
 const tableRef = ref<InstanceType<typeof ElTable>>();
@@ -359,8 +361,7 @@ function getMethodTagType(method: string) {
 }
 
 const pagedList = computed(() => {
-  const start = (pagination.page - 1) * pagination.pageSize;
-  return list.value.slice(start, start + pagination.pageSize);
+  return list.value;
 });
 
 const pagedDetailApps = computed(() => {
@@ -428,9 +429,14 @@ const importedReviewRows = computed(() =>
 );
 
 async function loadData() {
-  const { data } = await fetchReverseAuthApiList(query);
-  list.value = data;
-  const visibleIds = new Set(data.map((item) => item.api_id));
+  const { data } = await fetchReverseAuthApiList({
+    ...query,
+    page: pagination.page,
+    pageSize: pagination.pageSize
+  });
+  list.value = data.list;
+  total.value = data.total;
+  const visibleIds = new Set(data.list.map((item: ReverseAuthListItem) => item.api_id));
   Array.from(selectedRowMap.value.keys()).forEach((id) => {
     if (!visibleIds.has(id)) {
       selectedRowMap.value.delete(id);
@@ -438,6 +444,11 @@ async function loadData() {
   });
   syncSelectedRows();
   restorePageSelection();
+}
+
+function handleSearch() {
+  pagination.page = 1;
+  loadData();
 }
 
 function resetQuery() {
@@ -482,6 +493,7 @@ function handleSelectionChange(rows: ReverseAuthListItem[]) {
 
 function handlePageSizeChange() {
   pagination.page = 1;
+  loadData();
 }
 
 function handleDetailPageSizeChange() {

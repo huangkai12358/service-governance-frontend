@@ -7,7 +7,7 @@
       </div>
     </div>
 
-    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+    <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="调用方应用编码"><el-input v-model="query.caller_app_code" clearable /></el-form-item>
       <el-form-item label="调用方应用名称"><el-input v-model="query.caller_app_name" clearable /></el-form-item>
       <el-form-item label="被调用方应用编码"><el-input v-model="query.callee_app_code" clearable /></el-form-item>
@@ -53,7 +53,8 @@
             v-model:page-size="pagination.pageSize"
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next"
-            :total="list.length"
+            :total="total"
+            @current-change="loadData"
             @size-change="handlePageSizeChange"
           />
         </div>
@@ -117,7 +118,7 @@
         </div>
 
         <div class="auth-editor">
-          <div class="editor-column">
+          <div class="editor-column api-list-column">
             <h3 class="section-title">API 列表</h3>
             <el-input v-model="apiKeyword" clearable :placeholder="apiKeywordPlaceholder" />
             <el-tabs v-model="editorTab">
@@ -140,7 +141,7 @@
               </el-tab-pane>
             </el-tabs>
           </div>
-          <div class="editor-column">
+          <div class="editor-column change-preview-column">
             <h3 class="section-title">变更预览</h3>
             <div class="change-summary">
               <span>总计</span>
@@ -223,7 +224,6 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { apis, apps } from '@/mock/base';
 import {
   calcAuthorizationDelta,
   fetchExistingSingleAppAuthorization,
@@ -237,6 +237,7 @@ import type { AuthorizationAppOption, AuthorizationEditorData, SingleAppAuthoriz
 
 const query = reactive({ caller_app_code: '', caller_app_name: '', callee_app_code: '', callee_app_name: '' });
 const list = ref<SingleAppAuthorization[]>([]);
+const total = ref(0);
 const visible = ref(false);
 const dialogTitle = ref('授权配置');
 const appOptions = ref<AuthorizationAppOption[]>([]);
@@ -281,8 +282,7 @@ const revokedApiDetails = computed(() => {
   });
 });
 const pagedList = computed(() => {
-  const start = (pagination.page - 1) * pagination.pageSize;
-  return list.value.slice(start, start + pagination.pageSize);
+  return list.value;
 });
 const filteredCurrentApis = computed(() => {
   const keyword = apiKeyword.value.trim();
@@ -328,11 +328,21 @@ const pagedLegacyApiDetailRows = computed(() => {
 });
 
 async function loadData() {
-  const { data } = await fetchSingleAppAuthList(query);
-  list.value = data;
-  if (pagination.page > Math.max(1, Math.ceil(list.value.length / pagination.pageSize))) {
+  const { data } = await fetchSingleAppAuthList({
+    ...query,
+    page: pagination.page,
+    pageSize: pagination.pageSize
+  });
+  list.value = data.list;
+  total.value = data.total;
+  if (pagination.page > Math.max(1, Math.ceil(total.value / pagination.pageSize))) {
     pagination.page = 1;
   }
+}
+
+function handleSearch() {
+  pagination.page = 1;
+  loadData();
 }
 
 function resetQuery() {
@@ -343,6 +353,7 @@ function resetQuery() {
 
 function handlePageSizeChange() {
   pagination.page = 1;
+  loadData();
 }
 
 function handleApiDetailPageSizeChange() {
@@ -501,31 +512,22 @@ function splitAuthorizedApiRows(record: SingleAppAuthorization | null) {
   if (!record) {
     return { current: [] as Array<{ api_name: string; api_path: string; version: string }>, legacy: [] as Array<{ api_name: string; api_path: string; version: string }> };
   }
-  const app = apps.find((item) => item.app_code === record.callee_app_code);
-  const currentVersionApis = apis.filter((item) =>
-    item.app_code === record.callee_app_code &&
-    item.is_deleted === 0 &&
-    (!app?.current_version || item.version === app.current_version)
-  );
-  const currentPathSet = new Set(currentVersionApis.map((item) => item.api_path));
-  const toRow = (apiPath: string) => {
-    const matched = apis.find((item) => item.app_code === record.callee_app_code && item.api_path === apiPath)
-      || apis.find((item) => item.api_path === apiPath);
-    return {
-      api_name: matched?.api_name || '兼容旧版本 API',
-      api_path: apiPath,
-      version: matched?.version || '-'
-    };
+  const rows = ((record as any).api_rows || []) as Array<{ api_name: string; api_path: string; version: string }>;
+  const currentVersion = (record as any).current_version || '-';
+  const toRow = (apiPath: string) => rows.find((item) => item.api_path === apiPath) || {
+    api_name: '兼容旧版本 API',
+    api_path: apiPath,
+    version: '-'
   };
   return {
-    current: record.api_paths.filter((path) => currentPathSet.has(path)).map(toRow),
-    legacy: record.api_paths.filter((path) => !currentPathSet.has(path)).map(toRow)
+    current: record.api_paths.map(toRow).filter((item) => item.version === currentVersion || currentVersion === '-'),
+    legacy: record.api_paths.map(toRow).filter((item) => item.version !== currentVersion && currentVersion !== '-')
   };
 }
 
 function getCurrentVersion(record: SingleAppAuthorization | null) {
   if (!record) return '-';
-  return apps.find((item) => item.app_code === record.callee_app_code)?.current_version || '-';
+  return (record as any).current_version || '-';
 }
 </script>
 
@@ -544,6 +546,7 @@ function getCurrentVersion(record: SingleAppAuthorization | null) {
   flex-direction: column;
   gap: 16px;
   max-height: calc(100vh - 220px);
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -596,18 +599,42 @@ function getCurrentVersion(record: SingleAppAuthorization | null) {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 16px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .editor-column {
   min-height: 360px;
   max-height: 520px;
-  overflow: auto;
+  overflow: hidden;
   padding: 16px;
   border: 1px solid var(--sg-border);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.api-list-column :deep(.el-tabs) {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.api-list-column :deep(.el-tabs__content) {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.api-list-column :deep(.el-tab-pane) {
+  height: 100%;
+  min-height: 0;
+}
+
+.change-preview-column {
+  overflow-y: auto;
 }
 
 .group-title {
@@ -628,7 +655,9 @@ function getCurrentVersion(record: SingleAppAuthorization | null) {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow: auto;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
 .api-checkbox-list :deep(.el-checkbox),

@@ -1,6 +1,5 @@
+import { post } from '@/api/client';
 import type { PageQuery } from '@/types/common';
-import { apps } from './base';
-import { paginate, success, wait } from '@/utils/mock';
 import type { AppEditorPayload, AppPasswordPayload } from '@/types/business';
 
 export interface AppListQuery extends PageQuery {
@@ -9,106 +8,88 @@ export interface AppListQuery extends PageQuery {
 }
 
 export async function fetchAppList(query: AppListQuery) {
-  const list = apps.filter((item) => item.is_deleted === 0).filter((item) => {
-    return (!query.app_code || item.app_code.includes(query.app_code)) &&
-      (!query.app_name || item.app_name.includes(query.app_name));
+  const response = await post<any>('/api/app/list', {
+    pageNum: query.page,
+    pageSize: query.pageSize,
+    appCode: query.app_code,
+    appName: query.app_name
   });
-  return wait(success(paginate(list, query)));
+  return {
+    ...response,
+    data: {
+      list: (response.data?.records || []).map(toAppSnake),
+      total: response.data?.total || 0
+    }
+  };
 }
 
 export async function fetchAppDetail(id: number) {
-  return wait(success(apps.find((item) => item.id === id) || null));
+  const response = await post<any>('/api/app/detail', { appId: id });
+  return {
+    ...response,
+    data: {
+      ...toAppSnake(response.data || {}),
+      apis: (response.data?.apis || []).map((item: any) => ({
+        id: item.apiId || item.id,
+        api_name: item.apiName || item.api_name,
+        api_path: item.apiPath || item.api_path,
+        api_method: item.apiMethod || item.api_method
+      }))
+    }
+  };
 }
 
 export async function saveApp(payload: AppEditorPayload) {
   if (payload.id) {
-    const current = apps.find((item) => item.id === payload.id && item.is_deleted === 0);
-    if (!current) {
-      return wait(success(false, 'APP 不存在'));
-    }
-
-    current.app_name = payload.app_name;
-    current.app_description = payload.app_description;
-    current.update_time = '2026-04-29 11:30:00';
-    return wait(success(true, '保存成功'));
+    return post<boolean>('/api/app/update', payload);
   }
-
-  const existed = apps.find((item) => item.app_code === payload.app_code && item.is_deleted === 0);
-  if (existed) {
-    return wait(success(false, '应用编码已存在'));
-  }
-
-  apps.unshift({
-    id: Math.max(0, ...apps.map((item) => item.id)) + 1,
-    app_code: payload.app_code,
-    app_name: payload.app_name,
-    app_description: payload.app_description,
-    primary_password: payload.primary_password,
-    secondary_password: payload.secondary_password,
-    current_version: 'v1.0.0',
-    create_time: '2026-04-29 11:30:00',
-    update_time: '2026-04-29 11:30:00',
-    is_deleted: 0
-  });
-
-  return wait(success(true, '保存成功'));
+  return post<boolean>('/api/app/add', payload);
 }
 
 export async function addAppPassword(payload: AppPasswordPayload) {
-  const current = apps.find((item) => item.id === payload.id && item.is_deleted === 0);
-  if (!current) {
-    return wait(success(false, 'APP 不存在'));
-  }
-  if (!payload.password) {
-    return wait(success(false, '请输入密码'));
-  }
-  if (current.primary_password && current.secondary_password) {
-    return wait(success(false, '当前已存在两套密码，不能继续添加'));
-  }
-
-  // 中文注释：密码只允许新增到空槽位，优先补密码二；如果密码一为空，则先补密码一。
-  if (!current.primary_password) {
-    current.primary_password = payload.password;
-  } else {
-    current.secondary_password = payload.password;
-  }
-  current.update_time = '2026-04-29 11:30:00';
-  return wait(success(true, '密码添加成功'));
+  const detail = await fetchAppDetail(payload.id!);
+  const app = detail.data || {};
+  const nextPrimary = app.primary_password || payload.password;
+  const nextSecondary = app.primary_password ? payload.password : (app.secondary_password || '');
+  return post<boolean>('/api/app/update', {
+    appId: payload.id,
+    appName: app.app_name,
+    appPwd: nextPrimary,
+    secondary_password: nextSecondary,
+    description: app.app_description || ''
+  });
 }
 
 export async function removeAppPassword(payload: AppPasswordPayload) {
-  const current = apps.find((item) => item.id === payload.id && item.is_deleted === 0);
-  if (!current) {
-    return wait(success(false, 'APP 不存在'));
-  }
-  if (!payload.target) {
-    return wait(success(false, '缺少删除目标'));
-  }
-  if (payload.target === 'primary') {
-    if (!current.primary_password) {
-      return wait(success(false, '密码一不存在'));
-    }
-    if (!current.secondary_password) {
-      return wait(success(false, '当前仅剩一个密码一，不能删除，否则服务将处于无密码状态'));
-    }
-    // 中文注释：删除密码一时，密码二自动顶升为密码一，保证服务仍保留当前可用密码。
-    current.primary_password = current.secondary_password;
-    current.secondary_password = '';
-    current.update_time = '2026-04-29 11:30:00';
-    return wait(success(true, '密码一已删除，密码二已自动转为密码一'));
-  }
-
-  if (!current.secondary_password) {
-    return wait(success(false, '密码二不存在'));
-  }
-  if (!current.primary_password) {
-    return wait(success(false, '当前没有密码一，不能删除密码二，否则服务将处于无密码状态'));
-  }
-  current.secondary_password = '';
-  current.update_time = '2026-04-29 11:30:00';
-  return wait(success(true, '密码二已删除'));
+  const detail = await fetchAppDetail(payload.id!);
+  const app = detail.data || {};
+  const primary = app.primary_password || '';
+  const secondary = app.secondary_password || '';
+  const nextPrimary = payload.target === 'primary' ? secondary : primary;
+  return post<boolean>('/api/app/update', {
+    appId: payload.id,
+    appName: app.app_name,
+    appPwd: nextPrimary,
+    secondary_password: '',
+    description: app.app_description || ''
+  });
 }
 
-export async function deleteApp() {
-  return wait(success(true, '删除成功'));
+export async function deleteApp(id?: number) {
+  return post<boolean>('/api/app/delete', { appId: id });
+}
+
+function toAppSnake(item: any) {
+  return {
+    id: item.appId || item.id,
+    app_code: item.appCode || item.app_code,
+    app_name: item.appName || item.app_name,
+    app_description: item.appDescription || item.app_description,
+    current_version: item.currentVersion || item.current_version,
+    primary_password: item.primaryPassword || item.primary_password,
+    secondary_password: item.secondaryPassword || item.secondary_password,
+    create_time: item.createTime || item.create_time,
+    update_time: item.updateTime || item.update_time,
+    is_deleted: item.isDeleted || item.is_deleted
+  };
 }

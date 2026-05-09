@@ -21,7 +21,9 @@ const tagType = computed(() => {
     GRANT: 'success',
     REVOKE: 'danger',
     新增: 'success',
-    撤销: 'danger'
+    撤销: 'danger',
+    删除: 'danger',
+    修改: 'warning'
   };
   return mapping[props.value] || 'info';
 });
@@ -40,7 +42,9 @@ const label = computed(() => {
     GRANT: '授权',
     REVOKE: '撤销',
     新增: '新增',
-    撤销: '撤销'
+    撤销: '撤销',
+    删除: '删除',
+    修改: '修改'
   };
   return mapping[props.value] || props.value;
 });

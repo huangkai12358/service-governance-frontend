@@ -90,15 +90,16 @@ router.beforeEach(async (to) => {
   }
   if (!to.meta.public && authStore.isLoggedIn) {
     try {
-      // 每次进入受保护页面前向后端确认当前 token 仍然有效，保证被顶掉后刷新立即失效。
       await checkSession();
-    } catch {
+    } catch (error) {
+      // 受保护页面必须由后端确认 sessionToken 有效；后端不可用时清理本地登录态并回到登录页。
       authStore.logout();
       return { path: '/login', query: { redirect: to.fullPath } };
     }
   }
   if (to.path === '/login' && authStore.isLoggedIn) {
     try {
+      // 已登录用户访问登录页时同样校验后端会话，避免仅凭 localStorage 进入系统。
       await checkSession();
       return '/dashboard';
     } catch {
