@@ -86,7 +86,10 @@ export async function fetchDashboard() {
  * 查询当前鉴权服务模式，供首页权限卡片回显。
  */
 export async function fetchAuthServiceSettings(): Promise<AuthServiceSettings> {
-  const data = await request<AuthServiceSettingsBackendResponse>('/api/dashboard/auth-settings');
+  const data = await request<AuthServiceSettingsBackendResponse>('/api/dashboard/auth-settings', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
   return mapAuthServiceSettings(data);
 }
 
