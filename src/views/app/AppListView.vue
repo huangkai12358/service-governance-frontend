@@ -177,8 +177,9 @@
           <el-descriptions-item label="更新时间">{{ detail.update_time }}</el-descriptions-item>
         </el-descriptions>
 
-        <div class="section-head">
-          <h3 class="section-title">包含的 API</h3>
+        <div class="section-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 class="section-title" style="margin-bottom: 0;">包含的 API</h3>
+          <el-button type="primary" size="small" :loading="exportLoading" @click="exportApisToExcel">导出为 Excel</el-button>
         </div>
 
         <el-table v-loading="detailApiLoading" :data="detailApiData.list" border>
@@ -217,6 +218,7 @@ import {
   type AppManageItem
 } from '@/api/appManage';
 import { fetchApiList, type ApiManageItem } from '@/api/apiManage';
+import { getSessionToken } from '@/utils/storage';
 
 type PasswordSlotState = 'existing' | 'new' | 'empty';
 
@@ -553,6 +555,60 @@ async function handleDelete(row: AppManageItem) {
     }
     const message = error instanceof Error ? error.message : '删除 APP 失败';
     ElMessage.error(message);
+  }
+}
+
+const exportLoading = ref(false);
+
+async function exportApisToExcel() {
+  if (exportLoading.value) {
+    return;
+  }
+  exportLoading.value = true;
+  ElMessage.info('正在导出，请稍候...');
+
+  try {
+    const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8081';
+    const sessionToken = getSessionToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (sessionToken) {
+      headers['sessionToken'] = sessionToken;
+    }
+    const response = await fetch(`${API_BASE_URL}/api/apis/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        appCode: detail.value?.app_code || undefined
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`导出失败：${response.status}`);
+    }
+
+    const disposition = response.headers.get('Content-Disposition') || '';
+    let fileName = 'API列表.xlsx';
+    const match = disposition.match(/filename\*=UTF-8''(.+)/);
+    if (match) {
+      fileName = decodeURIComponent(match[1]);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    ElMessage.success('导出成功');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '导出失败';
+    ElMessage.error(message);
+  } finally {
+    exportLoading.value = false;
   }
 }
 
