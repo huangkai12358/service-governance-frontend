@@ -33,7 +33,7 @@ const routes = [
         meta: { title: 'API 列表' }
       },
       {
-        path: 'api/smartdoc',
+        path: 'smartdoc/import',
         name: 'SmartDocImport',
         component: () => import('@/views/smartdoc/SmartDocImportView.vue'),
         meta: { title: 'SmartDoc 导入' }

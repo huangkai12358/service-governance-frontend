@@ -301,6 +301,7 @@ import type { UploadInstance, UploadUserFile } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import DiffCard from '@/components/DiffCard.vue';
 import { analyzeSmartDoc, confirmSmartDocImport } from '@/api/smartdoc';
+import { RequestError } from '@/utils/request';
 import { fetchAppOptions } from '@/api/appManage';
 import { saveReverseAuthorization } from '@/mock/auth';
 
@@ -421,7 +422,11 @@ async function analyze() {
     step.value = 2;
   } catch (error) {
     step.value = 0;
-    throw error;
+    const message =
+      error instanceof RequestError
+        ? error.message
+        : 'SmartDoc 上传失败，请检查代理配置或后端服务';
+    ElMessage.error(message);
   }
 }
 
@@ -431,19 +436,27 @@ async function confirmImport() {
     return;
   }
 
-  const { data, message } = await confirmSmartDocImport({
-    parse_id: parseId.value,
-    app_code: draft.app_code,
-    version: draft.version,
-    remark: draft.remark || ''
-  });
-  importResult.value = data;
-  resultVisible.value = true;
-  authMeta.callee_app_code = draft.app_code || data.additions?.[0]?.app_code || '';
-  authMeta.callee_app_name = data.additions?.[0]?.app_name || '';
-  authMeta.version = draft.version;
-  cancelImport();
-  ElMessage.success(message);
+  try {
+    const { data, message } = await confirmSmartDocImport({
+      parse_id: parseId.value,
+      app_code: draft.app_code,
+      version: draft.version,
+      remark: draft.remark || ''
+    });
+    importResult.value = data;
+    resultVisible.value = true;
+    authMeta.callee_app_code = draft.app_code || data.additions?.[0]?.app_code || '';
+    authMeta.callee_app_name = data.additions?.[0]?.app_name || '';
+    authMeta.version = draft.version;
+    cancelImport();
+    ElMessage.success(message);
+  } catch (error) {
+    const message =
+      error instanceof RequestError
+        ? error.message
+        : 'SmartDoc 导入确认失败，请稍后重试';
+    ElMessage.error(message);
+  }
 }
 
 function cancelImport() {
