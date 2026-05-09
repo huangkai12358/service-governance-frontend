@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { fetchDashboard, updateAuthServiceSettings } from '@/mock/dashboard';
+import { fetchAuthServiceSettings, fetchDashboard, updateAuthServiceSettings } from '@/api/dashboard';
 import type { ActivityRecord, AuthServiceSettings, OverviewStats } from '@/types/business';
 
 const stats = ref<OverviewStats | null>(null);
@@ -161,12 +161,13 @@ async function handleModeChange(nextMode: AuthServiceSettings['mode']) {
 }
 
 onMounted(async () => {
-  const { data } = await fetchDashboard();
+  const data = await fetchDashboard();
   stats.value = data.stats;
-  authSettings.value = data.auth_service_settings;
   imports.value = data.imports;
   auths.value = data.auths;
   calls.value = data.calls;
+
+  authSettings.value = data.authServiceSettings || await fetchAuthServiceSettings();
 });
 </script>
 

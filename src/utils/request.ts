@@ -25,11 +25,14 @@ interface RequestOptions extends RequestInit {
 
 export async function request<T>(url: string, options: RequestOptions = {}) {
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (!isFormDataBody && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const sessionToken = getSessionToken();
   if (!options.skipAuth && sessionToken) {
-    // 后端统一从请求头读取 sessionToken，这里在请求层集中附带。
+    // 后台管理接口统一使用 sessionToken 请求头，业务接口和外部 Basic 鉴权接口按调用方单独传入。
     headers.set('sessionToken', sessionToken);
   }
 

@@ -119,15 +119,7 @@ npm run preview
 - APP 列表查询、分页、详情、编辑、删除
 - 查看 APP 说明、当前版本号、关联 API 等信息
 
-### 8. API 分组管理
-
-- API 分组列表查询、分页
-- 新增 / 编辑 / 删除 API 分组
-- 修改分组说明
-- 修改组内包含的 API
-- 提供变更预览
-
-### 9. 权限管理
+### 8. 权限管理
 
 #### 单个应用授权
 
@@ -194,7 +186,6 @@ src
 │   ├── auth.ts
 │   ├── base.ts
 │   ├── dashboard.ts
-│   ├── group.ts
 │   ├── history.ts
 │   ├── logs.ts
 │   ├── smartdoc.ts
@@ -216,7 +207,6 @@ src
 │   ├── app
 │   ├── auth
 │   ├── dashboard
-│   ├── groups
 │   ├── login
 │   ├── logs
 │   ├── smartdoc
@@ -235,7 +225,6 @@ src
 | SmartDoc 导入 | `/api/smartdoc` |
 | 历史版本管理 | `/api/version-history` |
 | APP 列表 | `/app/list` |
-| API 分组 | `/groups/api` |
 | 单个应用授权 | `/auth/app` |
 | API 反向授权 | `/auth/api-reverse` |
 | 权限配置历史记录 | `/logs/auth-config` |

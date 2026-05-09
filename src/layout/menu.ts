@@ -17,7 +17,7 @@ export interface MenuItem {
 export const menus: MenuItem[] = [
   { title: '首页', path: '/dashboard', icon: Grid },
   { title: 'API 授权拓扑图', path: '/dashboard/topology', icon: Connection },
-  { title: 'SmartDoc 导入', path: '/api/smartdoc', icon: UploadFilled },
+  { title: 'SmartDoc 导入', path: '/smartdoc/import', icon: UploadFilled },
   {
     title: 'API 管理',
     path: '/api',

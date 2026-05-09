@@ -1,4 +1,4 @@
-import { apps as mockApps } from '@/mock/base';
+import { fetchAppOptions } from '@/api/appManage';
 import { request } from '@/utils/request';
 import type { HttpMethod } from '@/types/business';
 import type { PageResult } from '@/types/common';
@@ -44,8 +44,10 @@ export interface ApiAppOption {
 
 interface ApiListBackendResponse {
   total: number;
-  pageNum: number;
-  pageSize: number;
+  pageNum?: number;
+  pageSize?: number;
+  current?: number;
+  size?: number;
   records: ApiBackendItem[];
 }
 
@@ -74,8 +76,8 @@ function mapApiItem(item: ApiBackendItem): ApiManageItem {
     api_method: item.method,
     version: item.version || '-',
     api_description: item.description || '',
-    create_time: item.createTime,
-    update_time: item.updateTime
+    create_time: item.createTime ? item.createTime.replace('T', ' ') : '-',
+    update_time: item.updateTime ? item.updateTime.replace('T', ' ') : '-'
   };
 }
 
@@ -96,13 +98,16 @@ export async function fetchApiList(query: ApiManageQuery): Promise<PageResult<Ap
   return {
     list: data.records.map(mapApiItem),
     total: data.total,
-    page: data.pageNum,
-    pageSize: data.pageSize
+    page: data.pageNum || data.current || query.page,
+    pageSize: data.pageSize || data.size || query.pageSize
   };
 }
 
 export async function fetchApiDetail(id: number): Promise<ApiManageItem | null> {
-  const data = await request<ApiBackendItem>(`/api/apis/detail?id=${id}`);
+  const data = await request<ApiBackendItem>('/api/apis/detail', {
+    method: 'POST',
+    body: JSON.stringify({ apiId: id })
+  });
   return data ? mapApiItem(data) : null;
 }
 
@@ -127,13 +132,6 @@ export async function saveApi(payload: ApiManagePayload) {
 }
 
 export async function fetchApiOptions() {
-  const apps: ApiAppOption[] = mockApps
-    .filter((item) => item.is_deleted === 0)
-    .map((item) => ({
-      id: item.id,
-      app_code: item.app_code,
-      app_name: item.app_name
-    }));
-
+  const apps: ApiAppOption[] = await fetchAppOptions();
   return { apps };
 }

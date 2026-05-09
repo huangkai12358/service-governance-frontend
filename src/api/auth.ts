@@ -1,6 +1,4 @@
 import type { UserInfo } from '@/types/business';
-import { mockLogin, mockLogout } from '@/mock/login';
-import { shouldUseMockAuthFallback } from '@/utils/authFallback';
 import { request } from '@/utils/request';
 
 interface LoginPayload {
@@ -9,7 +7,7 @@ interface LoginPayload {
 }
 
 interface LogoutPayload {
-  sessionToken: string;
+  sessionToken?: string;
 }
 
 export function login(payload: LoginPayload) {
@@ -17,29 +15,18 @@ export function login(payload: LoginPayload) {
     method: 'POST',
     body: JSON.stringify(payload),
     skipAuth: true
-  }).catch((error) => {
-    if (shouldUseMockAuthFallback(error)) {
-      return mockLogin(payload);
-    }
-    throw error;
   });
 }
 
-export function logout(payload: LogoutPayload) {
+export function logout(_payload: LogoutPayload) {
   return request<void>('/api/auth/logout', {
     method: 'POST',
-    body: JSON.stringify(payload),
-    skipAuth: true
-  }).catch((error) => {
-    if (shouldUseMockAuthFallback(error)) {
-      return mockLogout(payload);
-    }
-    throw error;
+    body: JSON.stringify({})
   });
 }
 
 export function checkSession() {
-  return request<void>('/api/auth/check', {
+  return request<void>('/api/auth/session/check', {
     method: 'POST'
   });
 }

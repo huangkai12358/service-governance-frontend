@@ -13,7 +13,15 @@
         <el-step title="确认导入" />
       </el-steps>
       <div class="upload-wrap">
-        <el-upload drag action="#" :auto-upload="false" :limit="1">
+        <el-upload
+          ref="uploadRef"
+          v-model:file-list="fileList"
+          drag
+          action="#"
+          :auto-upload="false"
+          :limit="1"
+          accept=".zip"
+        >
           <el-icon size="28"><UploadFilled /></el-icon>
           <div class="el-upload__text">拖拽 SmartDoc 文件到此处，或点击上传</div>
         </el-upload>
@@ -53,7 +61,7 @@
         </el-tab-pane>
         <el-tab-pane :label="`修改 API（${diff.modifications.length}）`" name="modify">
           <div class="diff-grid diff-scroll">
-            <DiffCard v-for="item in diff.modifications" :key="item.id" type="updated" :title="item.after.api_name" :subtitle="item.after.api_path" tag-text="修改API">
+            <DiffCard v-for="item in diff.modifications" :key="item.id" type="updated" :title="item.after.api_name" :subtitle="item.after.api_path" tag-text="修改 API">
               <el-descriptions :column="1" border>
                 <el-descriptions-item label="变化字段">
                   <el-tag v-for="field in item.changed_fields" :key="field" style="margin-right:8px">{{ field }}</el-tag>
@@ -66,7 +74,7 @@
         </el-tab-pane>
         <el-tab-pane :label="`废弃 API（${diff.deprecations.length}）`" name="deprecate">
           <div class="diff-grid diff-scroll">
-            <DiffCard v-for="item in diff.deprecations" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="废弃API">
+            <DiffCard v-for="item in diff.deprecations" :key="item.id" type="removed" :title="item.api_name" :subtitle="item.api_path" tag-text="废弃 API">
               <p>请求方法：{{ item.api_method }}</p>
               <p>描述：{{ item.api_description }}</p>
             </DiffCard>
@@ -128,36 +136,36 @@
         </div>
 
         <el-card class="step-card" shadow="never">
-              <template v-if="authStep === 0">
-                <div class="step-layout">
-                  <el-descriptions :column="1" border>
-                    <el-descriptions-item label="被调用方服务">{{ authMeta.callee_app_name }}（{{ authMeta.callee_app_code }}）</el-descriptions-item>
-                    <el-descriptions-item label="SmartDoc 版本">{{ authMeta.version }}</el-descriptions-item>
-                    <el-descriptions-item label="本次新增 API 数量">{{ authCatalog.length }}</el-descriptions-item>
-                  </el-descriptions>
+          <template v-if="authStep === 0">
+            <div class="step-layout">
+              <el-descriptions :column="1" border>
+                <el-descriptions-item label="被调用方服务">{{ authMeta.callee_app_name }}（{{ authMeta.callee_app_code }}）</el-descriptions-item>
+                <el-descriptions-item label="SmartDoc 版本">{{ authMeta.version }}</el-descriptions-item>
+                <el-descriptions-item label="本次新增 API 数量">{{ authCatalog.length }}</el-descriptions-item>
+              </el-descriptions>
 
-                  <div class="step-section">
-                    <div class="section-head">
-                      <h3 class="section-title">选择调用方服务</h3>
-                      <span class="section-meta">已处理 {{ authAssignments.length }} 个服务</span>
-                    </div>
-                    <div class="caller-select-row">
-                      <el-select v-model="currentCallerAppCode" placeholder="请选择调用方服务" filterable clearable class="caller-select">
-                        <el-option
-                          v-for="item in availableCallerApps"
-                          :key="item.app_code"
-                          :label="`${item.app_name}（${item.app_code}）`"
-                          :value="item.app_code"
-                          :disabled="processedCallerCodes.includes(item.app_code)"
-                        >
-                          <div class="service-option">
-                            <span>{{ item.app_name }}（{{ item.app_code }}）</span>
-                            <el-tag v-if="processedCallerCodes.includes(item.app_code)" size="small" type="success">已处理</el-tag>
-                          </div>
-                        </el-option>
-                      </el-select>
-                      <el-button type="primary" :disabled="!currentCallerAppCode" @click="goAuthNextStep">下一步</el-button>
-                    </div>
+              <div class="step-section">
+                <div class="section-head">
+                  <h3 class="section-title">选择调用方服务</h3>
+                  <span class="section-meta">已处理 {{ authAssignments.length }} 个服务</span>
+                </div>
+                <div class="caller-select-row">
+                  <el-select v-model="currentCallerAppCode" placeholder="请选择调用方服务" filterable clearable class="caller-select">
+                    <el-option
+                      v-for="item in availableCallerApps"
+                      :key="item.app_code"
+                      :label="`${item.app_name}（${item.app_code}）`"
+                      :value="item.app_code"
+                      :disabled="processedCallerCodes.includes(item.app_code)"
+                    >
+                      <div class="service-option">
+                        <span>{{ item.app_name }}（{{ item.app_code }}）</span>
+                        <el-tag v-if="processedCallerCodes.includes(item.app_code)" size="small" type="success">已处理</el-tag>
+                      </div>
+                    </el-option>
+                  </el-select>
+                  <el-button type="primary" :disabled="!currentCallerAppCode" @click="goAuthNextStep">下一步</el-button>
+                </div>
 
                 <div class="processed-services-panel">
                   <div v-if="authAssignments.length" class="processed-service-list">
@@ -197,54 +205,54 @@
             </div>
           </template>
 
-              <template v-else-if="authStep === 2">
-                <div class="step-layout">
-                  <el-descriptions :column="2" border>
-                    <el-descriptions-item label="当前调用方服务">{{ currentCallerAppName }}</el-descriptions-item>
-                    <el-descriptions-item label="被调用方服务">{{ authMeta.callee_app_name }}（{{ authMeta.callee_app_code }}）</el-descriptions-item>
-                  </el-descriptions>
-                  <el-table :data="currentApiRows" border max-height="440">
-                    <el-table-column prop="api_name" label="API 名称" min-width="220" />
-                    <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
-                  </el-table>
+          <template v-else-if="authStep === 2">
+            <div class="step-layout">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="当前调用方服务">{{ currentCallerAppName }}</el-descriptions-item>
+                <el-descriptions-item label="被调用方服务">{{ authMeta.callee_app_name }}（{{ authMeta.callee_app_code }}）</el-descriptions-item>
+              </el-descriptions>
+              <el-table :data="currentApiRows" border max-height="440">
+                <el-table-column prop="api_name" label="API 名称" min-width="220" />
+                <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+              </el-table>
             </div>
           </template>
 
-              <template v-else>
-                <div class="step-layout">
-                  <div v-if="authCompleted" class="complete-tip">
-                    <el-tag type="success" size="large">授权完成</el-tag>
+          <template v-else>
+            <div class="step-layout">
+              <div v-if="authCompleted" class="complete-tip">
+                <el-tag type="success" size="large">授权完成</el-tag>
+              </div>
+              <div class="review-summary">
+                <el-tag>调用方服务 {{ authAssignments.length }} 个</el-tag>
+                <el-tag type="success">本次授权 API {{ uniqueAssignedApiCount }} 个</el-tag>
+                <el-tag type="info">授权明细 {{ finalRows.length }} 条</el-tag>
+                <el-tag type="warning">未授权 API {{ unassignedApis.length }} 个</el-tag>
+              </div>
+              <el-tabs v-model="finalTab" class="final-tabs">
+                <el-tab-pane label="最终授权确认清单" name="authorized">
+                  <div class="final-main-table">
+                    <el-table :data="finalRows" border max-height="420">
+                      <el-table-column prop="caller_app_name" label="调用方服务" min-width="220" />
+                      <el-table-column prop="api_name" label="API 名称" min-width="220" />
+                      <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+                    </el-table>
                   </div>
-                  <div class="review-summary">
-                    <el-tag>调用方服务 {{ authAssignments.length }} 个</el-tag>
-                    <el-tag type="success">本次授权 API {{ uniqueAssignedApiCount }} 个</el-tag>
-                    <el-tag type="info">授权明细 {{ finalRows.length }} 条</el-tag>
-                    <el-tag type="warning">未授权 API {{ unassignedApis.length }} 个</el-tag>
+                </el-tab-pane>
+                <el-tab-pane :label="`未授权 API（${unassignedApis.length}）`" name="unassigned">
+                  <div class="step-section secondary-section">
+                    <el-empty v-if="!unassignedApis.length" description="所有新增 API 均已纳入授权" :image-size="44" />
+                    <el-table v-else :data="unassignedApis" border max-height="400">
+                      <el-table-column prop="api_name" label="API 名称" min-width="220" />
+                      <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
+                    </el-table>
                   </div>
-                  <el-tabs v-model="finalTab" class="final-tabs">
-                    <el-tab-pane label="最终授权确认清单" name="authorized">
-                      <div class="final-main-table">
-                        <el-table :data="finalRows" border max-height="420">
-                          <el-table-column prop="caller_app_name" label="调用方服务" min-width="220" />
-                          <el-table-column prop="api_name" label="API 名称" min-width="220" />
-                          <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
-                        </el-table>
-                      </div>
-                    </el-tab-pane>
-                    <el-tab-pane :label="`未授权 API（${unassignedApis.length}）`" name="unassigned">
-                      <div class="step-section secondary-section">
-                        <el-empty v-if="!unassignedApis.length" description="所有新增 API 均已纳入授权" :image-size="44" />
-                        <el-table v-else :data="unassignedApis" border max-height="400">
-                          <el-table-column prop="api_name" label="API 名称" min-width="220" />
-                          <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
-                        </el-table>
-                      </div>
-                    </el-tab-pane>
-                  </el-tabs>
-                </div>
-              </template>
-            </el-card>
-          </div>
+                </el-tab-pane>
+              </el-tabs>
+            </div>
+          </template>
+        </el-card>
+      </div>
 
       <template #footer>
         <template v-if="authStep === 0">
@@ -289,11 +297,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import type { UploadInstance, UploadUserFile } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import DiffCard from '@/components/DiffCard.vue';
-import { analyzeSmartDoc, confirmSmartDocImport } from '@/mock/smartdoc';
-import { fetchApiOptions } from '@/mock/api';
-import { saveReverseAuthorization } from '@/mock/auth';
+import { analyzeSmartDoc, confirmSmartDocImport } from '@/api/smartdoc';
+import { RequestError } from '@/utils/request';
+import { fetchAppOptions } from '@/api/appManage';
+import { saveReverseAuthorization } from '@/api/authorization';
 
 interface AuthApiItem {
   id: number;
@@ -314,6 +324,9 @@ const diff = ref<any>(null);
 const tab = ref('add');
 const draft = reactive({ app_code: '', version: '', remark: '' });
 const appOptions = ref<any[]>([]);
+const uploadRef = ref<UploadInstance>();
+const fileList = ref<UploadUserFile[]>([]);
+const parseId = ref('');
 const resultVisible = ref(false);
 const importResult = ref<any>(null);
 
@@ -385,32 +398,74 @@ const finalRows = computed(() =>
 );
 
 async function analyze() {
+  const uploadFile = fileList.value[0]?.raw;
+  if (!uploadFile) {
+    ElMessage.warning('请先上传 SmartDoc zip 文件');
+    return;
+  }
+
   step.value = 1;
-  const { data } = await analyzeSmartDoc();
-  diff.value = data;
-  Object.assign(draft, {
-    app_code: data.draft.app_code,
-    version: data.draft.version,
-    remark: data.draft.remark
-  });
-  step.value = 2;
+  try {
+    const { data } = await analyzeSmartDoc({
+      file: uploadFile,
+      app_code: draft.app_code || undefined,
+      version: draft.version || undefined,
+      remark: draft.remark || undefined
+    });
+    parseId.value = data.parse_id;
+    diff.value = data;
+    Object.assign(draft, {
+      app_code: data.draft.app_code,
+      version: data.draft.version,
+      remark: data.draft.remark
+    });
+    step.value = 2;
+  } catch (error) {
+    step.value = 0;
+    const message =
+      error instanceof RequestError
+        ? error.message
+        : 'SmartDoc 上传失败，请检查代理配置或后端服务';
+    ElMessage.error(message);
+  }
 }
 
 async function confirmImport() {
-  const { data, message } = await confirmSmartDocImport();
-  importResult.value = data;
-  resultVisible.value = true;
-  authMeta.callee_app_code = draft.app_code || data.additions?.[0]?.app_code || '';
-  authMeta.callee_app_name = data.additions?.[0]?.app_name || '';
-  authMeta.version = draft.version;
-  cancelImport();
-  ElMessage.success(message);
+  if (!parseId.value) {
+    ElMessage.warning('请先完成 SmartDoc 解析');
+    return;
+  }
+
+  try {
+    const { data, message } = await confirmSmartDocImport({
+      parse_id: parseId.value,
+      app_code: draft.app_code,
+      version: draft.version,
+      remark: draft.remark || ''
+    });
+    importResult.value = data;
+    resultVisible.value = true;
+    authMeta.callee_app_code = draft.app_code || data.additions?.[0]?.app_code || '';
+    authMeta.callee_app_name = data.additions?.[0]?.app_name || '';
+    authMeta.version = draft.version;
+    cancelImport();
+    ElMessage.success(message);
+  } catch (error) {
+    const message =
+      error instanceof RequestError
+        ? error.message
+        : 'SmartDoc 导入确认失败，请稍后重试';
+    ElMessage.error(message);
+  }
 }
 
 function cancelImport() {
   diff.value = null;
   step.value = 0;
+  parseId.value = '';
   Object.assign(draft, { app_code: '', version: '', remark: '' });
+  fileList.value = [];
+  uploadRef.value?.clearFiles();
 }
 
 function resetAuthorizeState() {
@@ -543,6 +598,7 @@ function restartAuthorize() {
 
 async function confirmAuthorize() {
   console.log('authMap', authAssignments.value);
+  try {
 
   for (const assignment of authAssignments.value) {
     const selectedApis = assignment.api_ids
@@ -568,6 +624,10 @@ async function confirmAuthorize() {
   ElMessage.success('新增 API 授权成功');
   authVisible.value = false;
   resetAuthorizeState();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'API 反向授权失败，请稍后重试';
+    ElMessage.error(message);
+  }
 }
 
 function closeAuthorizeDialog() {
@@ -576,8 +636,7 @@ function closeAuthorizeDialog() {
 }
 
 onMounted(async () => {
-  const { data } = await fetchApiOptions();
-  appOptions.value = data.apps;
+  appOptions.value = await fetchAppOptions();
 });
 </script>
 

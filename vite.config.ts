@@ -12,7 +12,11 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': {
+      '^/api/(auth|app|apis|dashboard|logs|authorization)(/|$)': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '^/api/smartdoc(/|$)': {
         target: 'http://localhost:8081',
         changeOrigin: true
       }

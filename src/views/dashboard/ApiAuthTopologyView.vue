@@ -1,18 +1,18 @@
 <template>
   <div class="page-container full-height">
-    <!-- API 授权拓扑图区域 -->
     <el-card class="panel-card topology-card" shadow="never">
       <div class="topology-header">
         <div class="topology-title">
           <h3>API 授权拓扑图</h3>
           <p class="text-muted">
-            当前纳管：{{ stats?.app_total }} 个服务，{{ stats?.api_total }} 个 API，共配置 {{ stats?.auth_relation_total }} 条授权
+            当前纳管：{{ stats?.app_total ?? 0 }} 个服务，{{ stats?.api_total ?? 0 }} 个 API，共配置
+            {{ stats?.auth_relation_total ?? 0 }} 个授权 API 关系
           </p>
         </div>
         <div class="topology-actions">
           <el-input
             v-model="searchQuery"
-            placeholder="搜索服务名、API名称或路径..."
+            placeholder="搜索服务名、API 名称或路径..."
             clearable
             style="width: 280px"
           >
@@ -22,11 +22,10 @@
           </el-input>
         </div>
       </div>
-      <!-- ECharts 渲染容器 -->
+
       <div ref="chartRef" class="topology-chart" />
     </el-card>
 
-    <!-- 拓扑图详情抽屉：点击节点或连线后右侧滑出 -->
     <el-drawer
       v-model="drawerVisible"
       :title="drawerTitle"
@@ -34,7 +33,6 @@
       destroy-on-close
       direction="rtl"
     >
-      <!-- 节点详情：展示该应用作为调用方/被调用方的授权关系 -->
       <template v-if="drawerType === 'node' && drawerNodeData">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="应用编码">{{ drawerNodeData.nodeCode }}</el-descriptions-item>
@@ -67,7 +65,6 @@
         </div>
       </template>
 
-      <!-- 连线详情：展示该授权关系下的所有 API -->
       <template v-if="drawerType === 'edge' && drawerEdgeData">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="调用方">{{ drawerEdgeData.sourceName }}</el-descriptions-item>
@@ -88,62 +85,91 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Search } from '@element-plus/icons-vue';
-import { fetchTopologyData, fetchDashboard } from '@/mock/dashboard';
-import type { TopologyData } from '@/mock/dashboard';
-import type { OverviewStats } from '@/types/business';
 import * as echarts from 'echarts';
+import { fetchDashboardTopology, type DashboardTopologyData } from '@/api/dashboard';
+import type { OverviewStats } from '@/types/business';
 
-/* ===================== 统计数据逻辑 ===================== */
+interface NodeDrawerItem {
+  appName: string;
+  apiCount: number;
+}
+
+interface NodeDrawerData {
+  nodeCode: string;
+  displayName: string;
+  callerList: NodeDrawerItem[];
+  callerApiTotal: number;
+  calleeList: NodeDrawerItem[];
+  calleeApiTotal: number;
+}
+
+interface EdgeDrawerData {
+  sourceName: string;
+  targetName: string;
+  apiDetails: Array<{ name: string; path: string }>;
+}
 
 const stats = ref<OverviewStats | null>(null);
-
-/* ===================== 拓扑图逻辑 ===================== */
-
-// 图表 DOM 引用与 ECharts 实例
 const chartRef = ref<HTMLElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
 
-// 原始全量数据与搜索条件
-const rawTopologyData = ref<TopologyData | null>(null);
+const rawTopologyData = ref<DashboardTopologyData | null>(null);
 const searchQuery = ref('');
 
-// 抽屉相关状态
 const drawerVisible = ref(false);
 const drawerType = ref<'node' | 'edge'>('node');
 const drawerTitle = ref('');
-const drawerNodeData = ref<any>(null);
-const drawerEdgeData = ref<any>(null);
+const drawerNodeData = ref<NodeDrawerData | null>(null);
+const drawerEdgeData = ref<EdgeDrawerData | null>(null);
 
-/**
- * 基于 HSL 色环为每个节点生成独立颜色
- * 在色环上均匀取点，使用黄金角（137.5°）分布，避免相邻节点颜色过于接近
- */
-function generateNodeColor(index: number, total: number): string {
-  // 使用黄金角分布让相邻索引的颜色差异最大化
+/** 控制每个节点在原有大小计算结果上的整体缩放比例。 */
+const NODE_SYMBOL_SIZE_SCALE = 0.4;
+/** 控制拓扑图首次渲染时的默认缩放比例。 */
+const INITIAL_TOPOLOGY_ZOOM = 1.0;
+/** 控制节点之间的排斥强度，数值越大节点间距越松散。 */
+const TOPOLOGY_FORCE_REPULSION = 260;
+/** 控制节点向中心聚拢的强度，数值越小整体越不容易挤在中心。 */
+const TOPOLOGY_FORCE_GRAVITY = 0.08;
+/** 控制授权关系连线两端节点的期望距离。 */
+const TOPOLOGY_FORCE_EDGE_LENGTH: [number, number] = [150, 220];
+/** 控制授权关系连线的最小宽度。 */
+const TOPOLOGY_LINK_MIN_WIDTH = 0.25;
+/** 控制授权关系连线的最大宽度。 */
+const TOPOLOGY_LINK_MAX_WIDTH = 2.6;
+
+function generateNodeColor(index: number): string {
   const hue = (index * 137.508) % 360;
   return `hsl(${Math.round(hue)}, 45%, 55%)`;
 }
 
 /**
- * 根据拓扑数据构建 ECharts 配置项
- * 核心逻辑：将 mock 层返回的 nodes / links / categories 转换为完整的 ECharts Graph option
+ * 按照节点 API 数量占比计算图形尺寸，并通过统一缩放系数控制整体节点大小。
  */
-function buildChartOption(topology: TopologyData): echarts.EChartsOption {
-  // 计算节点大小范围：度数越大，节点越大
+function calculateNodeSymbolSize(nodeValue: number, maxNodeValue: number, minSize: number, maxSize: number): number {
+  const baseSize = minSize + ((nodeValue / maxNodeValue) * (maxSize - minSize));
+  return baseSize * NODE_SYMBOL_SIZE_SCALE;
+}
+
+/**
+ * 按照授权 API 数量占比计算连线宽度，并限制在统一的细线范围内。
+ */
+function calculateLinkLineWidth(linkValue: number, maxLinkValue: number): number {
+  return TOPOLOGY_LINK_MIN_WIDTH
+    + ((linkValue / maxLinkValue) * (TOPOLOGY_LINK_MAX_WIDTH - TOPOLOGY_LINK_MIN_WIDTH));
+}
+
+function buildChartOption(topology: DashboardTopologyData): echarts.EChartsOption {
   const maxDegree = Math.max(...topology.nodes.map((n) => n.value), 1);
   const minSize = 12;
   const maxSize = 35;
-
-  // 计算连线粗细范围
   const maxWeight = Math.max(...topology.links.map((l) => l.value), 1);
 
   return {
     tooltip: {
       trigger: 'item',
       confine: true,
-      // 悬浮时仅展示简要信息，点击后详情通过抽屉展示
       formatter: (params: any) => {
         if (params.dataType === 'node') {
           const nodeCode = params.name;
@@ -151,21 +177,19 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
           const asCalleeCount = topology.links.filter((l) => l.target === nodeCode).length;
           return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${params.data.displayName || nodeCode}</div>`
             + `<div style="color:#64748b;font-size:12px">点击节点查看授权详情</div>`
-            + `<div style="color:#64748b;font-size:12px">作为调用方：${asCallerCount} 个服务 | 作为被调用方：${asCalleeCount} 个服务</div>`;
+            + `<div style="color:#64748b;font-size:12px">作为调用方：${asCallerCount} 个服务 | 作为被调方：${asCalleeCount} 个服务</div>`;
         }
         if (params.dataType === 'edge') {
           const linkData = params.data;
           const sourceLabel = topology.nodes.find((n) => n.name === linkData.source)?.label || linkData.source;
           const targetLabel = topology.nodes.find((n) => n.name === linkData.target)?.label || linkData.target;
-          return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${sourceLabel} → ${targetLabel}</div>`
+          return `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${sourceLabel} -> ${targetLabel}</div>`
             + `<div style="color:#64748b;font-size:12px">点击连线查看授权 API 列表（共 ${linkData.apiDetails?.length || 0} 个）</div>`;
         }
         return '';
       }
     },
-    // 节点数量较多时隐藏图例，避免界面拥挤
     legend: { show: false },
-    // 动画配置
     animationDuration: 1200,
     animationEasingUpdate: 'quinticInOut',
     series: [
@@ -173,27 +197,22 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
         name: 'API 授权拓扑',
         type: 'graph',
         layout: 'force',
-        // 增加初始缩放比例，使全貌可见
-        zoom: 0.6,
-        // 力导向布局参数：调小斥力和边长，增加引力，让所有节点尽量聚集在视野中心
+        zoom: INITIAL_TOPOLOGY_ZOOM,
         force: {
-          repulsion: 150,
-          gravity: 0.1,
-          edgeLength: [80, 160],
+          repulsion: TOPOLOGY_FORCE_REPULSION,
+          gravity: TOPOLOGY_FORCE_GRAVITY,
+          edgeLength: TOPOLOGY_FORCE_EDGE_LENGTH,
           friction: 0.6,
-          layoutAnimation: false // 禁用动画，使得图表在渲染后直接处于静止状态
+          layoutAnimation: false
         },
-        roam: true,         // 启用平移和缩放
-        draggable: true,    // 节点可拖拽
-        // 节点数据
+        roam: true,
+        draggable: true,
         data: topology.nodes.map((node) => ({
           name: node.name,
           displayName: node.label,
           value: node.value,
           category: node.category,
-          // 根据连接度数计算节点大小
-          symbolSize: minSize + ((node.value / maxDegree) * (maxSize - minSize)),
-          // 节点标签配置：所有节点都显示应用名
+          symbolSize: calculateNodeSymbolSize(node.value, maxDegree, minSize, maxSize),
           label: {
             show: true,
             position: 'bottom' as const,
@@ -207,7 +226,6 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
             shadowColor: 'rgba(0,0,0,0.15)'
           }
         })),
-        // 连线数据
         links: topology.links.map((link) => ({
           source: link.source,
           target: link.target,
@@ -215,22 +233,18 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
           apiPaths: link.apiPaths,
           apiDetails: link.apiDetails,
           lineStyle: {
-            // 连线粗细根据授权 API 数量映射（最小 0.5px，最大 5px）
-            width: 0.5 + (link.value / maxWeight) * 4.5,
+            width: calculateLinkLineWidth(link.value, maxWeight),
             color: 'rgba(29, 78, 216, 0.3)',
-            curveness: 0.2,    // 曲线弧度，避免双向线重叠
+            curveness: 0.2,
             opacity: 0.65
           }
         })),
-        // 连线箭头：从调用方指向被调用方
         edgeSymbol: ['none', 'arrow'],
         edgeSymbolSize: [4, 7],
-        // 分类定义：每个应用独立颜色，通过 HSL 色环均匀分布
         categories: topology.categories.map((cat, index) => ({
           name: cat.name,
-          itemStyle: { color: generateNodeColor(index, topology.categories.length) }
+          itemStyle: { color: generateNodeColor(index) }
         })),
-        // 悬浮交互：聚焦当前节点的相邻节点和连线，其余变暗
         emphasis: {
           focus: 'adjacency',
           lineStyle: { width: 3, opacity: 1 },
@@ -242,40 +256,35 @@ function buildChartOption(topology: TopologyData): echarts.EChartsOption {
 }
 
 function renderChart() {
-  if (!chartInstance || !rawTopologyData.value) return;
+  if (!chartInstance || !rawTopologyData.value) {
+    return;
+  }
 
   let displayData = rawTopologyData.value;
   const query = searchQuery.value.trim().toLowerCase();
 
   if (query) {
-    // 1. 找到直接匹配的应用节点（通过应用名称或编码）
     const matchedNodes = new Set(
       displayData.nodes
         .filter((n) => n.name.toLowerCase().includes(query) || n.label.toLowerCase().includes(query))
         .map((n) => n.name)
     );
 
-    // 2. 找到包含匹配 API 的连线，或者两端有匹配节点的连线
     const matchedLinks = displayData.links.filter((link) => {
-      // 匹配 API 名称或路径
-      const apiMatched = link.apiDetails?.some((api: any) =>
+      const apiMatched = link.apiDetails.some((api) =>
         api.name.toLowerCase().includes(query) || api.path.toLowerCase().includes(query)
       );
       const nodeMatched = matchedNodes.has(link.source) || matchedNodes.has(link.target);
       return apiMatched || nodeMatched;
     });
 
-    // 3. 根据保留下来的连线反推需要保留的节点
     const keepNodeCodes = new Set<string>();
     matchedLinks.forEach((link) => {
       keepNodeCodes.add(link.source);
       keepNodeCodes.add(link.target);
     });
-
-    // 将匹配到的孤立节点也保留进去
     matchedNodes.forEach((code) => keepNodeCodes.add(code));
 
-    // 重新构造用于展示的数据
     displayData = {
       ...displayData,
       nodes: displayData.nodes.filter((n) => keepNodeCodes.has(n.name)),
@@ -283,39 +292,47 @@ function renderChart() {
     };
   }
 
-  const option = buildChartOption(displayData);
-  chartInstance.clear(); // 清空历史状态与内部坐标缓存，避免搜索后产生连线错位的 Bug
-  chartInstance.setOption(option, { notMerge: true });
+  chartInstance.clear();
+  chartInstance.setOption(buildChartOption(displayData), { notMerge: true });
 }
 
-// 监听搜索输入（带防抖）
-let searchTimeout: any;
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(searchQuery, () => {
-  clearTimeout(searchTimeout);
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
   searchTimeout = setTimeout(() => {
     renderChart();
   }, 300);
 });
 
-/**
- * 加载拓扑图数据并渲染 ECharts
- */
-async function loadTopology() {
-  if (!chartInstance) return;
-  chartInstance.showLoading({ text: '拓扑数据加载中...' });
-
-  const { data: topologyData } = await fetchTopologyData();
-  rawTopologyData.value = topologyData;
-  chartInstance.hideLoading();
-
-  renderChart();
+function buildStats(topology: DashboardTopologyData): OverviewStats {
+  return {
+    app_total: topology.nodes.length,
+    api_total: topology.nodes.reduce((sum, node) => sum + node.value, 0),
+    auth_relation_total: topology.links.reduce((sum, link) => sum + link.value, 0),
+    smartdoc_import_total: 0,
+    today_call_total: 0
+  };
 }
 
-/**
- * 构建节点抽屉数据：汇总该应用作为调用方和被调用方的所有授权关系
- */
-function buildNodeDrawerData(nodeCode: string, displayName: string, topology: TopologyData) {
-  // 该应用作为调用方：找出所有 source === nodeCode 的连线
+async function loadTopology() {
+  if (!chartInstance) {
+    return;
+  }
+
+  chartInstance.showLoading({ text: '拓扑数据加载中...' });
+  try {
+    const topologyData = await fetchDashboardTopology();
+    rawTopologyData.value = topologyData;
+    stats.value = buildStats(topologyData);
+    renderChart();
+  } finally {
+    chartInstance.hideLoading();
+  }
+}
+
+function buildNodeDrawerData(nodeCode: string, displayName: string, topology: DashboardTopologyData): NodeDrawerData {
   const callerLinks = topology.links.filter((l) => l.source === nodeCode);
   const callerList = callerLinks.map((l) => {
     const targetNode = topology.nodes.find((n) => n.name === l.target);
@@ -324,9 +341,7 @@ function buildNodeDrawerData(nodeCode: string, displayName: string, topology: To
       apiCount: l.value
     };
   });
-  const callerApiTotal = callerLinks.reduce((sum, l) => sum + l.value, 0);
 
-  // 该应用作为被调用方：找出所有 target === nodeCode 的连线
   const calleeLinks = topology.links.filter((l) => l.target === nodeCode);
   const calleeList = calleeLinks.map((l) => {
     const sourceNode = topology.nodes.find((n) => n.name === l.source);
@@ -335,43 +350,49 @@ function buildNodeDrawerData(nodeCode: string, displayName: string, topology: To
       apiCount: l.value
     };
   });
-  const calleeApiTotal = calleeLinks.reduce((sum, l) => sum + l.value, 0);
 
   return {
     nodeCode,
     displayName,
     callerList,
-    callerApiTotal,
+    callerApiTotal: callerLinks.reduce((sum, l) => sum + l.value, 0),
     calleeList,
-    calleeApiTotal
+    calleeApiTotal: calleeLinks.reduce((sum, l) => sum + l.value, 0)
   };
 }
 
-/**
- * 初始化 ECharts 实例
- */
 function initChart() {
-  if (!chartRef.value) return;
-  chartInstance = echarts.init(chartRef.value);
+  if (!chartRef.value) {
+    return;
+  }
 
-  // 点击节点或连线时打开右侧抽屉展示详情
+  chartInstance = echarts.init(chartRef.value);
   chartInstance.on('click', (params) => {
-    if (!rawTopologyData.value) return;
+    if (!rawTopologyData.value) {
+      return;
+    }
 
     if (params.dataType === 'node') {
       const nodeCode = params.name;
-      const displayName = (params.data as any)?.displayName || nodeCode;
+      const displayName = (params.data as { displayName?: string })?.displayName || nodeCode;
       drawerType.value = 'node';
       drawerTitle.value = displayName;
       drawerNodeData.value = buildNodeDrawerData(nodeCode, displayName, rawTopologyData.value);
       drawerEdgeData.value = null;
       drawerVisible.value = true;
-    } else if (params.dataType === 'edge') {
-      const linkData = params.data as any;
+      return;
+    }
+
+    if (params.dataType === 'edge') {
+      const linkData = params.data as {
+        source: string;
+        target: string;
+        apiDetails?: Array<{ name: string; path: string }>;
+      };
       const sourceLabel = rawTopologyData.value.nodes.find((n) => n.name === linkData.source)?.label || linkData.source;
       const targetLabel = rawTopologyData.value.nodes.find((n) => n.name === linkData.target)?.label || linkData.target;
       drawerType.value = 'edge';
-      drawerTitle.value = `${sourceLabel} → ${targetLabel}`;
+      drawerTitle.value = `${sourceLabel} -> ${targetLabel}`;
       drawerEdgeData.value = {
         sourceName: `${sourceLabel}（${linkData.source}）`,
         targetName: `${targetLabel}（${linkData.target}）`,
@@ -382,41 +403,30 @@ function initChart() {
     }
   });
 
-  // 监听画布背景（空白处）的点击事件，关闭抽屉
   chartInstance.getZr().on('click', (event) => {
     if (!event.target) {
       drawerVisible.value = false;
     }
   });
 
-  loadTopology();
+  void loadTopology();
 }
 
-/**
- * 窗口大小变化时自适应图表尺寸
- */
 function handleResize() {
   chartInstance?.resize();
 }
 
-/* ===================== 生命周期 ===================== */
-
 onMounted(async () => {
-  // 加载统计数据
-  const { data: res } = await fetchDashboard();
-  if (res) {
-    stats.value = res.stats;
-  }
-
-  // 初始化拓扑图
   await nextTick();
   initChart();
   window.addEventListener('resize', handleResize);
 });
 
 onBeforeUnmount(() => {
-  // 销毁 ECharts 实例，防止内存泄漏
   window.removeEventListener('resize', handleResize);
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
   chartInstance?.dispose();
   chartInstance = null;
 });
@@ -424,10 +434,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .full-height {
-  height: calc(100vh - 54px); /* 减去外层 layout 的所有垂直 padding */
+  height: calc(100vh - 54px);
 }
 
-/* 拓扑图卡片样式 */
 .topology-card {
   display: flex;
   flex-direction: column;
@@ -455,13 +464,11 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
-/* ECharts 容器 */
 .topology-chart {
   width: 100%;
-  height: calc(100vh - 140px); /* 给定绝对高度，避免 el-card 内部 flex 失效导致高度为 0 */
+  height: calc(100vh - 140px);
 }
 
-/* 抽屉内分区样式 */
 .drawer-section {
   margin-top: 16px;
 }

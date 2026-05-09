@@ -5,7 +5,7 @@
       <p>按 API 资源反向分配调用方应用。适合将新增 API 批量授权给指定应用。</p>
     </div>
 
-    <PageSearch :model="query" @search="loadData" @reset="resetQuery">
+    <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
       <el-form-item label="所属应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
       <el-form-item label="所属应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
       <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
@@ -46,7 +46,8 @@
           v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
-          :total="list.length"
+          :total="total"
+          @current-change="loadData"
           @size-change="handlePageSizeChange"
         />
       </div>
@@ -308,7 +309,7 @@ import {
   fetchReverseAuthEditor,
   fetchReverseAuthorizedTargetDetail,
   saveReverseAuthorization
-} from '@/mock/auth';
+} from '@/api/authorization';
 import type { ReverseAuthorizedTargetDetail, ReverseAuthEditorData, ReverseAuthListItem } from '@/types/business';
 import type { HttpMethod } from '@/types/business';
 
@@ -324,6 +325,7 @@ const route = useRoute();
 const router = useRouter();
 const query = reactive({ app_code: '', app_name: '', api_name: '', api_path: '' });
 const list = ref<ReverseAuthListItem[]>([]);
+const total = ref(0);
 const selectedRows = ref<ReverseAuthListItem[]>([]);
 const selectedRowMap = ref(new Map<number, ReverseAuthListItem>());
 const tableRef = ref<InstanceType<typeof ElTable>>();
@@ -359,8 +361,7 @@ function getMethodTagType(method: string) {
 }
 
 const pagedList = computed(() => {
-  const start = (pagination.page - 1) * pagination.pageSize;
-  return list.value.slice(start, start + pagination.pageSize);
+  return list.value;
 });
 
 const pagedDetailApps = computed(() => {
@@ -428,9 +429,14 @@ const importedReviewRows = computed(() =>
 );
 
 async function loadData() {
-  const { data } = await fetchReverseAuthApiList(query);
-  list.value = data;
-  const visibleIds = new Set(data.map((item) => item.api_id));
+  const { data } = await fetchReverseAuthApiList({
+    ...query,
+    page: pagination.page,
+    pageSize: pagination.pageSize
+  });
+  list.value = data.list;
+  total.value = data.total;
+  const visibleIds = new Set(data.list.map((item: ReverseAuthListItem) => item.api_id));
   Array.from(selectedRowMap.value.keys()).forEach((id) => {
     if (!visibleIds.has(id)) {
       selectedRowMap.value.delete(id);
@@ -438,6 +444,11 @@ async function loadData() {
   });
   syncSelectedRows();
   restorePageSelection();
+}
+
+function handleSearch() {
+  pagination.page = 1;
+  loadData();
 }
 
 function resetQuery() {
@@ -482,6 +493,7 @@ function handleSelectionChange(rows: ReverseAuthListItem[]) {
 
 function handlePageSizeChange() {
   pagination.page = 1;
+  loadData();
 }
 
 function handleDetailPageSizeChange() {
@@ -643,7 +655,8 @@ async function submit(mode: 'continue' | 'finish' | 'default') {
     return;
   }
 
-  const { code, message } = await saveReverseAuthorization({
+  try {
+    const { code, message } = await saveReverseAuthorization({
     selected_apis: editorData.value.selected_apis.map((item) => ({
       id: item.id,
       api_path: item.api_path,
@@ -651,22 +664,27 @@ async function submit(mode: 'continue' | 'finish' | 'default') {
     })),
     checked_app_codes: checkedAppCodes.value,
     original_app_codes: originalAppCodes.value
-  });
+    });
 
-  if (code !== 0) {
+    if (code !== 0) {
+      ElMessage.error(message);
+      return;
+    }
+
+    ElMessage.success(message);
+    visible.value = false;
+    editorData.value = null;
+    await loadData();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'API 反向授权保存失败';
     ElMessage.error(message);
-    return;
   }
-
-  ElMessage.success(message);
-  visible.value = false;
-  editorData.value = null;
-  await loadData();
 }
 
 async function confirmImportedReview() {
-  for (const assignment of importedAssignments.value) {
-    const selectedApis = assignment.api_ids
+  try {
+    for (const assignment of importedAssignments.value) {
+      const selectedApis = assignment.api_ids
       .map((id) => importedApiMap.value.get(id))
       .filter(Boolean)
       .map((item) => ({
@@ -674,24 +692,28 @@ async function confirmImportedReview() {
         api_path: item!.api_path,
         app_code: item!.app_code
       }));
-    const { code, message } = await saveReverseAuthorization({
-      selected_apis: selectedApis,
-      checked_app_codes: [assignment.app_code],
-      original_app_codes: []
-    });
-    if (code !== 0) {
-      ElMessage.error(message);
-      return;
+      const { code, message } = await saveReverseAuthorization({
+        selected_apis: selectedApis,
+        checked_app_codes: [assignment.app_code],
+        original_app_codes: []
+      });
+      if (code !== 0) {
+        ElMessage.error(message);
+        return;
+      }
     }
-  }
 
   ElMessage.success('新增 API 授权确认成功');
-  visible.value = false;
-  editorData.value = null;
-  clearImportedFlowState();
-  clearBaseQueryAndSelection();
-  await loadData();
-  await router.replace({ path: '/auth/api-reverse' });
+    visible.value = false;
+    editorData.value = null;
+    clearImportedFlowState();
+    clearBaseQueryAndSelection();
+    await loadData();
+    await router.replace({ path: '/auth/api-reverse' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '新增 API 反向授权失败';
+    ElMessage.error(message);
+  }
 }
 
 async function restartImportedReview() {
