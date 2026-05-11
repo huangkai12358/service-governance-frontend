@@ -47,8 +47,8 @@ export async function request<T>(url: string, options: RequestOptions = {}) {
       clearSessionToken();
       clearStoredUser();
       if (window.location.pathname !== '/login') {
-        const redirect = `${window.location.pathname}${window.location.search}`;
-        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
+        // 登录态过期后回到登录页，重新登录成功后统一进入首页。
+        window.location.href = '/login';
       }
     }
     throw new RequestError(result.code, result.message || '请求失败');
