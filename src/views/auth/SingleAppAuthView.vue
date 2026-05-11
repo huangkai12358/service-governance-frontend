@@ -463,7 +463,7 @@ async function exportToExcel() {
     if (sessionToken) {
       headers['sessionToken'] = sessionToken;
     }
-    const response = await fetch(`${API_BASE_URL}/api/authorization/export`, {
+    const response = await fetch(`${API_BASE_URL}/api/authorization/single-app/export`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
