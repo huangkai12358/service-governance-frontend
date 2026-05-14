@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  fetchReverseApiNameOptions,
+  fetchReverseApiPathOptions,
+  fetchReverseAppCodeOptions,
+  fetchReverseAppNameOptions,
   fetchReverseAuthApiList,
   fetchReverseAuthEditor,
   fetchReverseAuthorizedTargetDetail,
@@ -150,6 +154,36 @@ describe('authorization api', () => {
     expect(result).toEqual({
       code: 0,
       message: '保存成功'
+    });
+  });
+
+  it('查询反向授权筛选候选项时提交统一关键字请求体', async () => {
+    mockedRequest
+      .mockResolvedValueOnce(['account-service-01'])
+      .mockResolvedValueOnce(['账户服务01'])
+      .mockResolvedValueOnce(['账户账单创建01'])
+      .mockResolvedValueOnce(['/api/account/01/bills/create-01']);
+
+    await expect(fetchReverseAppCodeOptions('account')).resolves.toEqual(['account-service-01']);
+    await expect(fetchReverseAppNameOptions('账户')).resolves.toEqual(['账户服务01']);
+    await expect(fetchReverseApiNameOptions('账户账单')).resolves.toEqual(['账户账单创建01']);
+    await expect(fetchReverseApiPathOptions('/api/account')).resolves.toEqual(['/api/account/01/bills/create-01']);
+
+    expect(mockedRequest).toHaveBeenNthCalledWith(1, '/api/authorization/reverse/app-code-options', {
+      method: 'POST',
+      body: JSON.stringify({ keyword: 'account' })
+    });
+    expect(mockedRequest).toHaveBeenNthCalledWith(2, '/api/authorization/reverse/app-name-options', {
+      method: 'POST',
+      body: JSON.stringify({ keyword: '账户' })
+    });
+    expect(mockedRequest).toHaveBeenNthCalledWith(3, '/api/authorization/reverse/api-name-options', {
+      method: 'POST',
+      body: JSON.stringify({ keyword: '账户账单' })
+    });
+    expect(mockedRequest).toHaveBeenNthCalledWith(4, '/api/authorization/reverse/api-path-options', {
+      method: 'POST',
+      body: JSON.stringify({ keyword: '/api/account' })
     });
   });
 });
