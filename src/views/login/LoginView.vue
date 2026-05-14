@@ -93,13 +93,12 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { login } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 
 const router = useRouter();
-const route = useRoute();
 const authStore = useAuthStore();
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
@@ -114,6 +113,9 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 };
 
+/**
+ * 提交登录表单，登录成功后统一进入首页。
+ */
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
@@ -129,8 +131,7 @@ async function submit() {
       sessionToken: data.sessionToken
     });
     ElMessage.success('登录成功');
-    const redirect = route.query.redirect as string | undefined;
-    await router.replace(redirect && !redirect.startsWith('/login') ? redirect : '/dashboard');
+    await router.replace('/dashboard');
     return;
   } catch {
     ElMessage.error('用户名或密码错误');

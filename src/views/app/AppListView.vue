@@ -25,14 +25,14 @@
         <el-table-column prop="app_code" label="应用编码" width="180" />
         <el-table-column prop="app_name" label="应用名称" width="180" />
         <el-table-column prop="app_description" label="应用说明" min-width="260" show-overflow-tooltip />
-        <el-table-column label="密码一" width="100" align="center">
+        <el-table-column label="主密码" width="100" align="center">
           <template #default="{ row }">
             <el-tag size="small" :type="row.has_pwd1 ? 'success' : 'info'">
               {{ row.has_pwd1 ? '已配置' : '未配置' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="密码二" width="100" align="center">
+        <el-table-column label="新密码" width="100" align="center">
           <template #default="{ row }">
             <el-tag size="small" :type="row.has_pwd2 ? 'warning' : 'info'">
               {{ row.has_pwd2 ? '已配置' : '未配置' }}
@@ -71,10 +71,10 @@
         <el-form-item label="应用名称" prop="app_name">
           <el-input v-model="createForm.app_name" />
         </el-form-item>
-        <el-form-item label="密码一" prop="primary_password">
+        <el-form-item label="主密码" prop="primary_password">
           <el-input v-model="createForm.primary_password" type="password" show-password />
         </el-form-item>
-        <el-form-item label="密码二">
+        <el-form-item label="新密码" prop="secondary_password">
           <el-input v-model="createForm.secondary_password" type="password" show-password />
         </el-form-item>
         <el-form-item label="应用说明">
@@ -88,12 +88,6 @@
     </el-dialog>
 
     <el-dialog v-model="editVisible" title="编辑 APP" width="640px">
-      <el-alert
-        title="后端会先处理删除，再把新密码放入第一个空密码槽位；如果输入框里有新密码，保存时会直接提交。"
-        type="info"
-        :closable="false"
-        class="edit-alert"
-      />
 
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="110px">
         <el-form-item label="应用编码">
@@ -109,7 +103,7 @@
 
       <div class="password-section">
         <div class="password-row">
-          <div class="password-row-label">密码一</div>
+          <div class="password-row-label">主密码</div>
           <div class="password-row-value">
             <el-tag size="small" :type="slot1TagType">{{ slot1StatusText }}</el-tag>
           </div>
@@ -121,7 +115,7 @@
         </div>
 
         <div class="password-row">
-          <div class="password-row-label">密码二</div>
+          <div class="password-row-label">新密码</div>
           <div class="password-row-value">
             <el-tag size="small" :type="slot2TagType">{{ slot2StatusText }}</el-tag>
           </div>
@@ -146,7 +140,7 @@
             <el-button type="primary" plain :disabled="!canAddPassword" @click="handleAddPassword">标记新增</el-button>
           </div>
           <div v-if="pendingPassword" class="password-tip">已标记一个待新增密码，保存后会放入第一个空密码槽位。</div>
-          <div v-else-if="passwordForm.password.trim()" class="password-tip">当前已输入新密码，直接保存也会提交给后端。</div>
+          <div v-else-if="passwordForm.password.trim()" class="password-tip">当前已输入新密码，直接保存会提交给后端。</div>
           <div v-else-if="!canAddPassword" class="password-tip">当前没有可新增的空密码槽位。</div>
         </el-form-item>
       </el-form>
@@ -163,12 +157,12 @@
           <el-descriptions-item label="应用编码">{{ detail.app_code }}</el-descriptions-item>
           <el-descriptions-item label="应用名称">{{ detail.app_name }}</el-descriptions-item>
           <el-descriptions-item label="应用说明">{{ detail.app_description || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="密码一">
+          <el-descriptions-item label="主密码">
             <el-tag size="small" :type="detail.has_pwd1 ? 'success' : 'info'">
               {{ detail.has_pwd1 ? '已配置' : '未配置' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="密码二">
+          <el-descriptions-item label="新密码">
             <el-tag size="small" :type="detail.has_pwd2 ? 'warning' : 'info'">
               {{ detail.has_pwd2 ? '已配置' : '未配置' }}
             </el-tag>
@@ -207,7 +201,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormItemRule, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
 import {
   deleteApp,
@@ -221,6 +215,9 @@ import { fetchApiList, type ApiManageItem } from '@/api/apiManage';
 import { getSessionToken } from '@/utils/storage';
 
 type PasswordSlotState = 'existing' | 'new' | 'empty';
+type PasswordValidator = NonNullable<FormItemRule['validator']>;
+
+const PASSWORD_STRENGTH_MESSAGE = '密码需至少8位，并同时包含大写字母、小写字母和数字';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '' });
 const detailQuery = reactive({ page: 1, pageSize: 10 });
@@ -267,10 +264,23 @@ const passwordForm = reactive({
   password: ''
 });
 
+/**
+ * 校验可选密码字段，未输入时允许通过，输入后必须满足强度要求。
+ */
+const validateOptionalPassword: PasswordValidator = (_rule, value, callback) => {
+  const password = String(value || '').trim();
+  if (password && !isStrongPassword(password)) {
+    callback(new Error(PASSWORD_STRENGTH_MESSAGE));
+    return;
+  }
+  callback();
+};
+
 const createRules: FormRules = {
   app_code: [{ required: true, message: '请输入应用编码', trigger: 'blur' }],
   app_name: [{ required: true, message: '请输入应用名称', trigger: 'blur' }],
-  primary_password: [{ required: true, message: '请输入密码一', trigger: 'blur' }]
+  primary_password: [{ validator: validateRequiredPassword('请输入主密码'), trigger: 'blur' }],
+  secondary_password: [{ validator: validateOptionalPassword, trigger: 'blur' }]
 };
 
 const editRules: FormRules = {
@@ -278,8 +288,33 @@ const editRules: FormRules = {
 };
 
 const passwordRules: FormRules = {
-  password: [{ required: true, message: '请输入新增密码', trigger: 'blur' }]
+  password: [{ validator: validateRequiredPassword('请输入新增密码'), trigger: 'blur' }]
 };
+
+/**
+ * 判断应用密码是否满足最小长度、大小写英文和数字组合规则。
+ */
+function isStrongPassword(password: string) {
+  return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password);
+}
+
+/**
+ * 构建必填密码校验器，用于新增 APP 的主密码和编辑弹窗的新增密码。
+ */
+function validateRequiredPassword(requiredMessage: string): PasswordValidator {
+  return (_rule, value, callback) => {
+    const password = String(value || '').trim();
+    if (!password) {
+      callback(new Error(requiredMessage));
+      return;
+    }
+    if (!isStrongPassword(password)) {
+      callback(new Error(PASSWORD_STRENGTH_MESSAGE));
+      return;
+    }
+    callback();
+  };
+}
 
 const pendingPassword = computed(() =>
   editForm.slot1_state === 'new' || editForm.slot2_state === 'new'
@@ -455,7 +490,13 @@ async function handleAddPassword() {
   }
 
   if (editForm.slot1_state === 'empty') {
-    editForm.slot1_state = 'new';
+    if (editForm.slot2_state === 'empty') {
+      editForm.slot1_state = 'new';
+    } else {
+      // 当历史数据存在主密码空、新密码有值时，页面先压缩状态，再标记新增密码。
+      editForm.slot1_state = editForm.slot2_state;
+      editForm.slot2_state = 'new';
+    }
   } else if (editForm.slot2_state === 'empty') {
     editForm.slot2_state = 'new';
   }
@@ -470,7 +511,7 @@ async function handleRemovePassword(target: 'primary' | 'secondary') {
     return;
   }
 
-  const passwordLabel = target === 'primary' ? '密码一' : '密码二';
+  const passwordLabel = target === 'primary' ? '主密码' : '新密码';
   try {
     await ElMessageBox.confirm(`确认删除${passwordLabel}吗？`, '删除确认', {
       type: 'warning',
@@ -485,13 +526,16 @@ async function handleRemovePassword(target: 'primary' | 'secondary') {
     if (editForm.slot1_state === 'empty') {
       return;
     }
+    const movedSlotState = editForm.slot2_state;
     if (editForm.slot1_state === 'existing' && editForm.initial_has_pwd1) {
       editForm.delete_pwd1 = true;
     }
     if (editForm.slot1_state === 'new') {
       passwordForm.password = '';
     }
-    editForm.slot1_state = 'empty';
+    // 主密码删除后，新密码在页面上同步前移，保持与后端保存后的槽位状态一致。
+    editForm.slot1_state = movedSlotState;
+    editForm.slot2_state = 'empty';
     return;
   }
 
@@ -516,6 +560,12 @@ async function submitEdit() {
   const deletePwd1 = editForm.delete_pwd1;
   const deletePwd2 = editForm.delete_pwd2;
   const appPwd = passwordForm.password.trim() || undefined;
+  if (appPwd) {
+    const passwordValid = await passwordFormRef.value?.validate().catch(() => false);
+    if (!passwordValid) {
+      return;
+    }
+  }
 
   editSubmitting.value = true;
   try {
