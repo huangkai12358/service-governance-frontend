@@ -1,5 +1,11 @@
 import { request } from '@/utils/request';
-import type { HttpMethod, ModifiedApiDiff, SmartDocDiffResult, VersionDiffItem } from '@/types/business';
+import type {
+  HttpMethod,
+  ModifiedApiDiff,
+  SmartDocDiffResult,
+  SmartDocImportResult,
+  VersionDiffItem
+} from '@/types/business';
 
 interface SmartDocAnalyzeBackendRequest {
   file: File;
@@ -61,6 +67,7 @@ interface SmartDocConfirmBackendResponse {
   additionCount: number;
   modificationCount: number;
   deprecationCount: number;
+  revokedAuthCount: number;
   additions: SmartDocAnalyzeBackendItem[];
 }
 
@@ -132,21 +139,24 @@ export async function confirmSmartDocImport(payload: SmartDocConfirmBackendReque
     })
   });
 
+  const mapped: SmartDocImportResult = {
+    api_version_id: data.apiVersionId,
+    app_code: data.appCode,
+    app_name: data.appName,
+    version: data.version,
+    file_name: data.fileName,
+    file_path: data.filePath,
+    remark: data.remark || '',
+    unchanged_count: data.unchangedCount,
+    addition_count: data.additionCount,
+    modification_count: data.modificationCount,
+    deprecation_count: data.deprecationCount,
+    revoked_auth_count: data.revokedAuthCount,
+    additions: data.additions.map(mapDiffItem)
+  };
+
   return {
-    data: {
-      api_version_id: data.apiVersionId,
-      app_code: data.appCode,
-      app_name: data.appName,
-      version: data.version,
-      file_name: data.fileName,
-      file_path: data.filePath,
-      remark: data.remark || '',
-      unchanged_count: data.unchangedCount,
-      addition_count: data.additionCount,
-      modification_count: data.modificationCount,
-      deprecation_count: data.deprecationCount,
-      additions: data.additions.map(mapDiffItem)
-    },
+    data: mapped,
     message: '导入成功'
   };
 }
