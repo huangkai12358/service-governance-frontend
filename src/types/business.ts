@@ -116,6 +116,22 @@ export interface SmartDocDiffResult {
   deprecations: VersionDiffItem[];
 }
 
+export interface SmartDocImportResult {
+  api_version_id: number;
+  app_code: string;
+  app_name: string;
+  version: string;
+  file_name: string;
+  file_path: string;
+  remark: string;
+  unchanged_count: number;
+  addition_count: number;
+  modification_count: number;
+  deprecation_count: number;
+  revoked_auth_count: number;
+  additions: VersionDiffItem[];
+}
+
 export interface VersionHistoryItem {
   id: number;
   api_version_id: bigint;
