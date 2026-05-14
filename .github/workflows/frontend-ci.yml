@@ -55,7 +55,12 @@ jobs:
         # 2. Vite 正式环境打包
         run: npm run build
 
-      # 第五步：SonarCloud 代码质量扫描
+      # 第五步：执行前端单元测试并生成 LCOV 覆盖率报告
+      - name: Run unit tests with coverage
+        # SonarCloud 需要读取 coverage/lcov.info 计算新增代码覆盖率
+        run: npm run test:coverage
+
+      # 第六步：SonarCloud 代码质量扫描
       - name: SonarCloud Scan
 
         # 官方 SonarCloud GitHub Action
@@ -74,9 +79,13 @@ jobs:
             -Dsonar.organization=huangkai12358
             -Dsonar.projectName=service-governance-frontend
             -Dsonar.sources=src
-            -Dsonar.exclusions=node_modules/**,dist/**
+            -Dsonar.tests=src
+            -Dsonar.test.inclusions=src/**/*.test.ts
+            -Dsonar.exclusions=node_modules/**,dist/**,src/**/*.test.ts,src/test/**,src/mock/**
+            -Dsonar.coverage.exclusions=src/main.ts,src/App.vue,src/router/**,src/layout/**,src/components/**,src/store/**,src/mock/**,src/types/**,src/views/**/*.vue,src/api/apiManage.ts,src/api/auth.ts,src/api/client.ts,src/api/dashboard.ts,src/api/logs.ts,src/utils/authFallback.ts,src/utils/mock.ts,src/**/*.d.ts,src/vite-env.d.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
-      # 第六步：上传前端构建产物
+      # 第七步：上传前端构建产物
       - name: Upload build artifacts
 
         # GitHub 官方 Artifact 上传 Action

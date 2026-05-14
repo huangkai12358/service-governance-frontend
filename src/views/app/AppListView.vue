@@ -201,7 +201,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox, type FormInstance, type FormItemRule, type FormRules } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
 import {
   deleteApp,
@@ -213,11 +213,9 @@ import {
 } from '@/api/appManage';
 import { fetchApiList, type ApiManageItem } from '@/api/apiManage';
 import { getSessionToken } from '@/utils/storage';
+import { createRequiredAppAuthValueValidator, validateOptionalAppAuthValue } from '@/views/app/passwordPolicy';
 
 type PasswordSlotState = 'existing' | 'new' | 'empty';
-type PasswordValidator = NonNullable<FormItemRule['validator']>;
-
-const PASSWORD_STRENGTH_MESSAGE = '密码需至少8位，并同时包含大写字母、小写字母和数字';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '' });
 const detailQuery = reactive({ page: 1, pageSize: 10 });
@@ -264,23 +262,11 @@ const passwordForm = reactive({
   password: ''
 });
 
-/**
- * 校验可选密码字段，未输入时允许通过，输入后必须满足强度要求。
- */
-const validateOptionalPassword: PasswordValidator = (_rule, value, callback) => {
-  const password = String(value || '').trim();
-  if (password && !isStrongPassword(password)) {
-    callback(new Error(PASSWORD_STRENGTH_MESSAGE));
-    return;
-  }
-  callback();
-};
-
 const createRules: FormRules = {
   app_code: [{ required: true, message: '请输入应用编码', trigger: 'blur' }],
   app_name: [{ required: true, message: '请输入应用名称', trigger: 'blur' }],
-  primary_password: [{ validator: validateRequiredPassword('请输入主密码'), trigger: 'blur' }],
-  secondary_password: [{ validator: validateOptionalPassword, trigger: 'blur' }]
+  primary_password: [{ validator: createRequiredAppAuthValueValidator('请输入主密码'), trigger: 'blur' }],
+  secondary_password: [{ validator: validateOptionalAppAuthValue, trigger: 'blur' }]
 };
 
 const editRules: FormRules = {
@@ -288,33 +274,8 @@ const editRules: FormRules = {
 };
 
 const passwordRules: FormRules = {
-  password: [{ validator: validateRequiredPassword('请输入新增密码'), trigger: 'blur' }]
+  password: [{ validator: createRequiredAppAuthValueValidator('请输入新增密码'), trigger: 'blur' }]
 };
-
-/**
- * 判断应用密码是否满足最小长度、大小写英文和数字组合规则。
- */
-function isStrongPassword(password: string) {
-  return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password);
-}
-
-/**
- * 构建必填密码校验器，用于新增 APP 的主密码和编辑弹窗的新增密码。
- */
-function validateRequiredPassword(requiredMessage: string): PasswordValidator {
-  return (_rule, value, callback) => {
-    const password = String(value || '').trim();
-    if (!password) {
-      callback(new Error(requiredMessage));
-      return;
-    }
-    if (!isStrongPassword(password)) {
-      callback(new Error(PASSWORD_STRENGTH_MESSAGE));
-      return;
-    }
-    callback();
-  };
-}
 
 const pendingPassword = computed(() =>
   editForm.slot1_state === 'new' || editForm.slot2_state === 'new'
