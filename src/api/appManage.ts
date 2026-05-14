@@ -86,7 +86,12 @@ function mapAppItem(item: AppBackendItem): AppManageItem {
 }
 
 function toBoolean(value: boolean | number | string | null | undefined) {
-  return value === true || value === 1 || value === '1' || value === 'true';
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    // 后端可能返回脱敏密码标识字符串，只有明确的否定值才视为未配置。
+    return normalized !== '' && normalized !== '0' && normalized !== 'false';
+  }
+  return value === true || value === 1;
 }
 
 export async function fetchAppList(query: AppManageQuery): Promise<PageResult<AppManageItem>> {
