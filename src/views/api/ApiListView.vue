@@ -5,11 +5,51 @@
       <p>按应用编码、应用名称、API 名称、请求路径和版本号管理 API 资产。</p>
     </div>
     <PageSearch :model="query" @search="handleSearch" @reset="resetQuery">
-      <el-form-item label="应用编码"><el-input v-model="query.app_code" clearable /></el-form-item>
-      <el-form-item label="应用名称"><el-input v-model="query.app_name" clearable /></el-form-item>
-      <el-form-item label="API 名称"><el-input v-model="query.api_name" clearable /></el-form-item>
-      <el-form-item label="请求路径"><el-input v-model="query.api_path" clearable /></el-form-item>
-      <el-form-item label="版本号"><el-input v-model="query.version" clearable /></el-form-item>
+      <el-form-item label="应用编码">
+        <el-input
+          v-model="query.app_code"
+          clearable
+          readonly
+          @clear="query.app_code = ''"
+          @click="openSelector('app_code')"
+        />
+      </el-form-item>
+      <el-form-item label="应用名称">
+        <el-input
+          v-model="query.app_name"
+          clearable
+          readonly
+          @clear="query.app_name = ''"
+          @click="openSelector('app_name')"
+        />
+      </el-form-item>
+      <el-form-item label="API 名称">
+        <el-input
+          v-model="query.api_name"
+          clearable
+          readonly
+          @clear="query.api_name = ''"
+          @click="openSelector('api_name')"
+        />
+      </el-form-item>
+      <el-form-item label="请求路径">
+        <el-input
+          v-model="query.api_path"
+          clearable
+          readonly
+          @clear="query.api_path = ''"
+          @click="openSelector('api_path')"
+        />
+      </el-form-item>
+      <el-form-item label="版本号">
+        <el-input
+          v-model="query.version"
+          clearable
+          readonly
+          @clear="query.version = ''"
+          @click="openSelector('version')"
+        />
+      </el-form-item>
     </PageSearch>
 
     <el-card class="panel-card" shadow="never">
@@ -111,16 +151,72 @@
         </el-descriptions>
       </div>
     </el-drawer>
+
+    <el-dialog
+      v-model="selectorVisible"
+      :title="selectorTitle"
+      width="720px"
+      destroy-on-close
+    >
+      <div class="selector-panel">
+        <el-input
+          v-model="selectorKeyword"
+          clearable
+          :placeholder="selectorPlaceholder"
+        />
+        <div class="selector-summary">共匹配 {{ filteredSelectorOptions.length }} 条</div>
+        <div v-if="filteredSelectorOptions.length" class="selector-list">
+          <button
+            v-for="item in filteredSelectorOptions"
+            :key="item.key"
+            type="button"
+            class="selector-item"
+            @click="selectOption(item)"
+          >
+            <div class="selector-item-main">{{ item.value }}</div>
+            <div v-if="item.meta" class="selector-item-sub">{{ item.meta }}</div>
+          </button>
+        </div>
+        <el-empty v-else :description="selectorEmptyDescription" :image-size="48" />
+      </div>
+      <template #footer>
+        <el-button @click="selectorVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import PageSearch from '@/components/PageSearch.vue';
-import { fetchApiDetail, fetchApiList, fetchApiOptions, saveApi } from '@/api/apiManage';
+import {
+  fetchApiAppCodeOptions,
+  fetchApiAppNameOptions,
+  fetchApiDetail,
+  fetchApiList,
+  fetchApiNameOptions,
+  fetchApiOptions,
+  fetchApiPathOptions,
+  fetchApiVersionOptions,
+  saveApi
+} from '@/api/apiManage';
 import type { ApiManageItem } from '@/api/apiManage';
 import type { HttpMethod } from '@/types/business';
+
+/**
+ * 筛选弹框候选项的前端展示结构。
+ */
+interface SearchSuggestionItem {
+  key: string;
+  value: string;
+  meta?: string;
+}
+
+/**
+ * API 列表支持弹框筛选的字段范围。
+ */
+type SelectorField = 'app_code' | 'app_name' | 'api_name' | 'api_path' | 'version';
 
 const query = reactive({ page: 1, pageSize: 10, app_code: '', app_name: '', api_name: '', api_path: '', version: '' });
 const tableData = reactive({ list: [] as ApiManageItem[], total: 0 });
@@ -135,6 +231,11 @@ const createSubmitting = ref(false);
 const editSubmitting = ref(false);
 const createFormRef = ref<FormInstance>();
 const editFormRef = ref<FormInstance>();
+const selectorOptions = ref<SearchSuggestionItem[]>([]);
+const selectorVisible = ref(false);
+const activeSelectorField = ref<SelectorField>('app_code');
+const selectorKeyword = ref('');
+let selectorSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const createForm = reactive({
   app_id: undefined as number | undefined,
@@ -167,6 +268,47 @@ const editRules: FormRules = {
   api_method: [{ required: true, message: '请选择请求方法', trigger: 'change' }]
 };
 
+/**
+ * 当前激活筛选字段对应的弹框标题。
+ */
+const selectorTitle = computed(() => {
+  if (activeSelectorField.value === 'app_code') {
+    return '选择应用编码';
+  }
+  if (activeSelectorField.value === 'app_name') {
+    return '选择应用名称';
+  }
+  if (activeSelectorField.value === 'api_name') {
+    return '选择API名称';
+  }
+  if (activeSelectorField.value === 'api_path') {
+    return '选择请求路径';
+  }
+  return '选择版本号';
+});
+
+/**
+ * 当前激活筛选字段对应的弹框输入提示。
+ */
+const selectorPlaceholder = computed(() => `请输入${selectorTitle.value.replace('选择', '')}`);
+
+/**
+ * 根据后端返回的远程候选项直接渲染弹框列表。
+ */
+const filteredSelectorOptions = computed(() => selectorOptions.value);
+
+/**
+ * 标记弹框内是否已经输入关键字，用于控制空态文案。
+ */
+const hasSelectorKeyword = computed(() => Boolean(selectorKeyword.value.trim()));
+
+/**
+ * 根据弹框输入状态返回空态文案。
+ */
+const selectorEmptyDescription = computed(() => (
+  hasSelectorKeyword.value ? '暂无匹配数据' : '请输入关键字后查询'
+));
+
 async function loadOptions() {
   try {
     const data = await fetchApiOptions();
@@ -189,6 +331,62 @@ async function loadData() {
   } finally {
     loading.value = false;
   }
+}
+
+/**
+ * 按当前字段和关键字查询左前缀候选项，空关键字时清空候选列表。
+ */
+async function searchSelectorOptions(field: SelectorField, keyword: string) {
+  const normalizedKeyword = keyword.trim();
+  if (!normalizedKeyword) {
+    selectorOptions.value = [];
+    return;
+  }
+
+  if (field === 'app_code') {
+    const data = await fetchApiAppCodeOptions(normalizedKeyword);
+    selectorOptions.value = data.map((item) => ({ key: `app-code-${item}`, value: item }));
+    return;
+  }
+
+  if (field === 'app_name') {
+    const data = await fetchApiAppNameOptions(normalizedKeyword);
+    selectorOptions.value = data.map((item) => ({ key: `app-name-${item}`, value: item }));
+    return;
+  }
+
+  if (field === 'api_name') {
+    const data = await fetchApiNameOptions(normalizedKeyword);
+    selectorOptions.value = data.map((item) => ({ key: `api-name-${item}`, value: item }));
+    return;
+  }
+
+  if (field === 'api_path') {
+    const data = await fetchApiPathOptions(normalizedKeyword);
+    selectorOptions.value = data.map((item) => ({ key: `api-path-${item}`, value: item }));
+    return;
+  }
+
+  const data = await fetchApiVersionOptions(normalizedKeyword);
+  selectorOptions.value = data.map((item) => ({ key: `version-${item}`, value: item }));
+}
+
+/**
+ * 打开筛选选择弹框，候选项由用户输入关键字后再远程查询。
+ */
+function openSelector(field: SelectorField) {
+  activeSelectorField.value = field;
+  selectorKeyword.value = '';
+  selectorOptions.value = [];
+  selectorVisible.value = true;
+}
+
+/**
+ * 选中候选项后回填查询条件，列表结果由查询按钮触发精确匹配。
+ */
+function selectOption(item: SearchSuggestionItem) {
+  query[activeSelectorField.value] = item.value;
+  selectorVisible.value = false;
 }
 
 function handleSearch() {
@@ -287,6 +485,34 @@ async function submitEdit() {
 onMounted(async () => {
   await Promise.all([loadOptions(), loadData()]);
 });
+
+watch(selectorKeyword, (keyword) => {
+  if (!selectorVisible.value) {
+    return;
+  }
+
+  if (selectorSearchTimer) {
+    clearTimeout(selectorSearchTimer);
+  }
+
+  selectorSearchTimer = setTimeout(() => {
+    searchSelectorOptions(activeSelectorField.value, keyword);
+  }, 200);
+});
+
+/**
+ * 关闭弹框时清空输入和候选项，避免下次打开时残留上一个字段的查询状态。
+ */
+watch(selectorVisible, (visible) => {
+  if (!visible) {
+    selectorKeyword.value = '';
+    selectorOptions.value = [];
+    if (selectorSearchTimer) {
+      clearTimeout(selectorSearchTimer);
+      selectorSearchTimer = null;
+    }
+  }
+});
 </script>
 
 <style scoped>
@@ -296,5 +522,65 @@ onMounted(async () => {
 
 .detail-wrapper {
   min-height: 180px;
+}
+
+.selector-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.selector-summary {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.selector-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+}
+
+.selector-item {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-right: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.selector-item:nth-child(2n) {
+  border-right: 0;
+}
+
+.selector-item:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.selector-item:hover {
+  background: var(--el-fill-color-light);
+}
+
+.selector-item-main {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  line-height: 22px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.selector-item-sub {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: normal;
+  word-break: break-word;
 }
 </style>

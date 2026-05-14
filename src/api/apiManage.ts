@@ -42,6 +42,13 @@ export interface ApiAppOption {
   app_name: string;
 }
 
+/**
+ * 候选项查询接口统一使用的关键字请求体。
+ */
+interface KeywordQuery {
+  keyword: string;
+}
+
 interface ApiListBackendResponse {
   total: number;
   pageNum?: number;
@@ -79,6 +86,13 @@ function mapApiItem(item: ApiBackendItem): ApiManageItem {
     create_time: item.createTime ? item.createTime.replace('T', ' ') : '-',
     update_time: item.updateTime ? item.updateTime.replace('T', ' ') : '-'
   };
+}
+
+/**
+ * 构造候选项查询请求体，保持 API 列表筛选接口和日志筛选接口风格一致。
+ */
+function buildKeywordQuery(keyword: string): KeywordQuery {
+  return { keyword };
 }
 
 export async function fetchApiList(query: ApiManageQuery): Promise<PageResult<ApiManageItem>> {
@@ -134,4 +148,54 @@ export async function saveApi(payload: ApiManagePayload) {
 export async function fetchApiOptions() {
   const apps: ApiAppOption[] = await fetchAppOptions();
   return { apps };
+}
+
+/**
+ * 查询 API 列表应用编码筛选候选项。
+ */
+export async function fetchApiAppCodeOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/apis/app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询 API 列表应用名称筛选候选项。
+ */
+export async function fetchApiAppNameOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/apis/app-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询 API 列表 API 名称筛选候选项。
+ */
+export async function fetchApiNameOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/apis/api-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询 API 列表请求路径筛选候选项。
+ */
+export async function fetchApiPathOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/apis/api-path-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询 API 列表版本号筛选候选项。
+ */
+export async function fetchApiVersionOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/apis/version-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
