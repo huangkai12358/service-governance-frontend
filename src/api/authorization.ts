@@ -16,6 +16,13 @@ interface ReverseAuthorizationSavePayload {
   original_app_codes: string[];
 }
 
+/**
+ * 候选项查询接口统一使用的关键字请求体。
+ */
+interface KeywordQuery {
+  keyword: string;
+}
+
 interface AppOptionBackendItem {
   appId?: number;
   id?: number;
@@ -89,6 +96,53 @@ export async function fetchReverseAuthApiList(query: {
       pageSize: data.size || query.pageSize || 10
     }
   };
+}
+
+/**
+ * 构造候选项查询请求体，保持反向授权筛选接口与日志筛选接口风格一致。
+ */
+function buildKeywordQuery(keyword: string): KeywordQuery {
+  return { keyword };
+}
+
+/**
+ * 查询反向授权列表所属应用编码候选项。
+ */
+export async function fetchReverseAppCodeOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/authorization/reverse/app-code-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询反向授权列表所属应用名称候选项。
+ */
+export async function fetchReverseAppNameOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/authorization/reverse/app-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询反向授权列表 API 名称候选项。
+ */
+export async function fetchReverseApiNameOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/authorization/reverse/api-name-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
+}
+
+/**
+ * 查询反向授权列表请求路径候选项。
+ */
+export async function fetchReverseApiPathOptions(keyword: string): Promise<string[]> {
+  return request<string[]>('/api/authorization/reverse/api-path-options', {
+    method: 'POST',
+    body: JSON.stringify(buildKeywordQuery(keyword))
+  });
 }
 
 export async function fetchReverseAuthEditor(apiIds: number[]) {
