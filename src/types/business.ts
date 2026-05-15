@@ -116,6 +116,22 @@ export interface SmartDocDiffResult {
   deprecations: VersionDiffItem[];
 }
 
+export interface SmartDocImportResult {
+  api_version_id: number;
+  app_code: string;
+  app_name: string;
+  version: string;
+  file_name: string;
+  file_path: string;
+  remark: string;
+  unchanged_count: number;
+  addition_count: number;
+  modification_count: number;
+  deprecation_count: number;
+  revoked_auth_count: number;
+  additions: VersionDiffItem[];
+}
+
 export interface VersionHistoryItem {
   id: number;
   api_version_id: bigint;
@@ -145,6 +161,15 @@ export interface SingleAppAuthorization {
   callee_app_code: string;
   callee_app_name: string;
   api_paths: string[];
+  api_rows?: Array<{
+    api_name: string;
+    api_path: string;
+    version: string;
+    deprecated_auth?: boolean;
+  }>;
+  current_api_count?: number;
+  legacy_api_count?: number;
+  current_version?: string;
 }
 
 export interface AuthorizationAppOption {

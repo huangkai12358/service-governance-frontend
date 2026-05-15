@@ -85,6 +85,7 @@
         <div class="actions-tip">
           已完成差异分析，可直接确认导入当前解析结果
         </div>
+        <div class="actions-tip">废弃 API 会保留现有授权关系，可在“单个应用授权”的兼容旧版本中继续查看和编排。</div>
         <div class="actions-buttons">
           <el-button @click="cancelImport">取消</el-button>
           <el-button type="primary" @click="confirmImport">确认导入</el-button>
@@ -101,6 +102,8 @@
           <el-tag type="warning">废弃 {{ importResult.deprecation_count }} 个</el-tag>
         </div>
         <p class="result-tip">本次导入已生成新版本。对于新增 API，可在当前页面直接继续完成授权配置。</p>
+        <el-tag type="info">保留授权 {{ importResult.revoked_auth_count === 0 ? '是' : '否' }}</el-tag>
+        <p class="result-tip">废弃 API 的现有授权关系会继续保留，可在“单个应用授权”的兼容旧版本中继续查看和调整。</p>
       </div>
       <template #footer>
         <el-button @click="resultVisible = false">关闭</el-button>
@@ -131,7 +134,7 @@
           </div>
           <div v-if="authStep === 2" class="flow-return">
             <span class="flow-return-arrow">↺</span>
-            <span>点击 确认并继续 返回 Step1</span>
+            <span>点击“确认并继续”返回步骤一</span>
           </div>
         </div>
 
@@ -301,6 +304,7 @@ import type { UploadInstance, UploadUserFile } from 'element-plus';
 import { UploadFilled } from '@element-plus/icons-vue';
 import DiffCard from '@/components/DiffCard.vue';
 import { analyzeSmartDoc, confirmSmartDocImport } from '@/api/smartdoc';
+import type { SmartDocImportResult } from '@/types/business';
 import { RequestError } from '@/utils/request';
 import { fetchAppOptions } from '@/api/appManage';
 import { saveReverseAuthorization } from '@/api/authorization';
@@ -328,7 +332,7 @@ const uploadRef = ref<UploadInstance>();
 const fileList = ref<UploadUserFile[]>([]);
 const parseId = ref('');
 const resultVisible = ref(false);
-const importResult = ref<any>(null);
+const importResult = ref<SmartDocImportResult | null>(null);
 
 const authVisible = ref(false);
 const authStep = ref(0);
@@ -360,12 +364,12 @@ const currentCallerAppName = computed(() => {
   const target = availableCallerApps.value.find((item) => item.app_code === currentCallerAppCode.value);
   return target ? `${target.app_name}（${target.app_code}）` : '-';
 });
-const transferData = computed(() =>
-  authCatalog.value.map((item) => ({
+const transferData = computed(() => {
+  return authCatalog.value.map((item) => ({
     key: item.id,
     label: `${item.api_name} - ${item.api_path}`
-  }))
-);
+  }));
+});
 const authApiMap = computed(() => new Map(authCatalog.value.map((item) => [item.id, item])));
 const currentApiRows = computed(() =>
   currentTransferKeys.value

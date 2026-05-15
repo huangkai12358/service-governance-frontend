@@ -310,7 +310,8 @@ function toAuthorizedApiRow(item: any) {
   return {
     api_name: item.apiName || item.api_name,
     api_path: item.apiPath || item.api_path,
-    version: item.version || '-'
+    version: item.version || '-',
+    deprecated_auth: item.deprecatedAuth || item.deprecated_auth || false
   };
 }
 
