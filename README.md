@@ -1,241 +1,206 @@
-# 服务治理管理平台
+# 服务治理管理平台前端
 
-基于 `Vue 3 + TypeScript + Vite + Element Plus` 的前端原型项目，用于演示服务治理场景下的 API 资产管理、SmartDoc 文档导入、应用授权配置、版本记录与调用日志查询。
-
-当前项目为纯前端原型，数据全部来自本地 `mock`，不依赖真实后端，可直接运行用于业务评审、产品演示和后台原型验证。
-
-## 项目特点
-
-- Vue 3 组合式 API + TypeScript
-- Vite 构建，启动速度快
-- Element Plus 企业后台风格组件
-- Vue Router 路由管理
-- Pinia 登录态管理
-- 本地 Mock 数据模拟真实接口返回格式
-- 内置 ECharts 拓扑图，用于展示 API 授权关系
-- 页面按真实后台项目方式拆分，便于后续接后端
+基于 `Vue 3 + TypeScript + Vite + Element Plus` 的服务治理后台。当前项目已经接入真实后端接口，不再是纯 Mock 原型。后端默认地址为 `http://localhost:8081`，开发服务器默认端口为 `5174`。
 
 ## 技术栈
 
-- `vue@3`
-- `typescript`
-- `vite`
-- `element-plus`
-- `pinia`
-- `vue-router`
-- `echarts`
-- `dayjs`
+- Vue 3
+- TypeScript
+- Vite 6
+- Element Plus
+- Vue Router
+- Pinia
+- ECharts
+- Dayjs
+- Vitest
 
 ## 快速开始
 
-### 1. 安装依赖
+安装依赖：
 
 ```bash
 npm install
 ```
 
-### 2. 启动开发环境
+启动开发服务：
 
 ```bash
 npm run dev
 ```
 
-### 3. 构建生产包
+访问：
+
+```text
+http://localhost:5174
+```
+
+构建：
 
 ```bash
 npm run build
 ```
 
-### 4. 本地预览构建结果
+预览构建产物：
 
 ```bash
 npm run preview
 ```
 
-## 演示账号
+运行测试：
 
-- 用户名：`admin`
-- 密码：`admin123`
+```bash
+npm run test
+```
 
-登录后会进入首页概览；未登录访问业务页面会自动跳转到登录页。
+## 后端依赖
 
-## 当前功能范围
+前端业务页面依赖后端 `auth-service`。请先启动后端：
 
-### 1. 登录模块
+```bash
+cd ../service-governance-backend
+mvn -pl auth-service spring-boot:run
+```
 
-- Basic Auth 风格演示登录
-- Pinia + 本地存储维护登录态
-- 路由守卫控制未登录跳转
+默认后端地址：
 
-### 2. 首页概览
+```text
+http://localhost:8081
+```
 
-- 应用总数
-- API 总数
-- API 分组总数
-- 授权关系总数
-- SmartDoc 导入次数
-- 今日调用记录
-- 最近导入
-- 最近授权变更
-- 最近调用决策
+Vite 开发环境已在 `vite.config.ts` 中把 `/api/auth`、`/api/app`、`/api/apis`、`/api/dashboard`、`/api/logs`、`/api/authorization`、`/api/smartdoc` 代理到 `http://localhost:8081`。
 
-### 3. API 授权拓扑图
+如果不走 Vite 代理，也可以设置环境变量：
 
-- 独立页面展示服务间 API 授权关系
-- 支持搜索服务名、API 名称、请求路径
-- 点击节点查看应用作为调用方 / 被调用方的关系明细
-- 点击连线查看该授权关系下的 API 列表
+```bash
+VITE_API_BASE_URL=http://localhost:8081 npm run dev
+```
 
-### 4. API 管理
+## 登录和会话
 
-- API 列表查询、分页、详情、编辑、逻辑删除
-- 支持按应用编码、应用名称、API 名称、请求路径、版本号筛选
-- 新增 API / 编辑 API
-- 查看 API 所属分组、描述、请求路径等信息
+登录账号由后端 `USER_INFO` 数据决定。
 
-### 5. SmartDoc 导入
+登录成功后，后端返回 `sessionToken`。前端会把它保存到本地，并在后台管理接口请求头中携带：
 
-- 模拟上传 SmartDoc 文档
-- 按 `path` 对比差异
-- 差异类型：
-  - 新增 API
-  - 修改 API
-  - 废弃 API
-  - 无变化
-- 支持填写 `app_code`、版本号、说明
-- 确认导入后弹出结果提示
-- 对新增 API 提供“去授权”入口，跳转到 API 反向授权页面
+```text
+sessionToken: xxxxxxxxxx
+```
 
-### 6. 历史版本管理
+受保护页面会在进入前调用 `/api/auth/session/check`。如果后端未启动、数据库不可用、会话过期或 token 无效，前端会清理本地登录态并回到登录页。
 
-- 按应用编码、应用名称、版本号查询历史版本
-- 查看版本详情
-- 查看某版本包含的 API 列表
+## 当前功能
 
-说明：当前版本**不支持回滚**。如需回退，按产品策略应重新导入目标 SmartDoc 文档并生成新版本。
+### 首页概览
 
-### 7. APP 管理
+- 应用总数、API 总数、授权关系总数
+- SmartDoc 导入次数、今日调用记录
+- 授权服务模式配置
+- 最近导入、最近授权变更、最近调用决策
 
-- APP 列表查询、分页、详情、编辑、删除
-- 查看 APP 说明、当前版本号、关联 API 等信息
+### API 授权拓扑图
 
-### 8. 权限管理
+- 展示服务之间的授权调用关系
+- 支持按服务名、API 名称、请求路径搜索
+- 支持查看节点和连线明细
 
-#### 单个应用授权
+### API 管理
 
-- 按调用方应用 / 被调用方应用查看已有授权关系
-- 修改授权时支持：
-  - 左侧 API 列表勾选
-  - 右侧按 API 分组展开选择
-  - 左右勾选状态同步
-  - 变更预览
+- API 列表、分页、搜索、详情
+- 新增、编辑、删除 API
+- 按应用编码、应用名称、API 名称、路径、版本号筛选
+- API 导出
 
-#### API 反向授权
+### APP 管理
 
-- 从 API 角度反向配置授权目标应用
-- 支持单个 API 授权
+- APP 列表、分页、搜索、详情
+- 新增、编辑、删除 APP
+- 密码配置状态展示
+- 查看 APP 关联 API
+
+### SmartDoc 导入
+
+- 上传并分析 SmartDoc 文档
+- 展示新增、修改、废弃、无变化 API
+- 确认导入后写入版本和 API 数据
+- 可对新增 API 跳转做反向授权
+
+### 单应用授权
+
+- 按调用方应用和被调用方应用查看授权关系
+- 授权配置弹窗展示当前版本 API 和兼容旧版本 API
+- 支持勾选 API、保存授权、查看变更预览
+- 支持导出授权数据
+
+### API 反向授权
+
+- 从 API 维度查看和配置授权应用
+- 支持单个 API 反向授权
 - 支持同一被调用应用下的多个 API 批量授权
-- 支持跨页选择保留
-- 可查看某个 API 当前已授权的应用
+- 支持授权应用搜索和回显
 
-### 10. 日志查询
+### 日志查询
 
 - 权限配置历史记录
 - SmartDoc 导入历史记录
 - 远程调用历史记录
 
-所有日志页均支持筛选、分页、状态区分和 Mock 数据查询。
-
-## Mock 数据说明
-
-项目所有业务数据均位于 `src/mock`，统一模拟后端返回结构：
-
-```ts
-{
-  code: 0,
-  message: 'success',
-  data: ...
-}
-```
-
-当前 Mock 特点：
-
-- 应用约 `100` 个
-- 每个应用约 `100` 个 API
-- API 总量约 `10000`
-- 支持筛选、分页、详情、授权、日志等场景
-- SmartDoc 导入差异数据为结构化 Mock
-- 日志、授权关系、版本记录均为可直接驱动页面的模拟数据
-
-这套数据规模适合验证后台页面在较大数据量下的 UI / UX 表现。
-
-## 目录结构
-
-```text
-src
-├── components              # 通用组件
-│   ├── DiffCard.vue
-│   ├── PageSearch.vue
-│   └── StatusTag.vue
-├── layout                  # 主布局与菜单
-│   ├── MainLayout.vue
-│   └── menu.ts
-├── mock                    # 本地 Mock 数据与接口模拟
-│   ├── api.ts
-│   ├── app.ts
-│   ├── auth.ts
-│   ├── base.ts
-│   ├── dashboard.ts
-│   ├── history.ts
-│   ├── logs.ts
-│   ├── smartdoc.ts
-│   └── version.ts
-├── router                  # 路由配置
-│   └── index.ts
-├── store                   # Pinia 状态管理
-│   └── auth.ts
-├── styles                  # 全局样式
-│   └── global.css
-├── types                   # 类型定义
-│   ├── business.ts
-│   └── common.ts
-├── utils                   # 工具方法
-│   ├── mock.ts
-│   └── storage.ts
-├── views                   # 页面
-│   ├── api
-│   ├── app
-│   ├── auth
-│   ├── dashboard
-│   ├── login
-│   ├── logs
-│   ├── smartdoc
-│   └── version
-├── App.vue
-└── main.ts
-```
+远程调用历史当前对应后端 `CALL_DECISION_LOG`，记录的是 `/api/authorization/check` 的授权判定结果，包括 `SUCCESS` 和 `FAIL`。`BYPASS` 需要调用方服务侧补报或统一日志系统支持，目前前后端不主动生成。
 
 ## 主要页面路由
 
-| 菜单 | 路由 |
+| 页面 | 路由 |
 |---|---|
+| 登录 | `/login` |
 | 首页概览 | `/dashboard` |
 | API 授权拓扑图 | `/dashboard/topology` |
 | API 列表 | `/api/list` |
 | SmartDoc 导入 | `/api/smartdoc` |
 | 历史版本管理 | `/api/version-history` |
 | APP 列表 | `/app/list` |
-| 单个应用授权 | `/auth/app` |
+| 单应用授权 | `/auth/app` |
 | API 反向授权 | `/auth/api-reverse` |
 | 权限配置历史记录 | `/logs/auth-config` |
 | SmartDoc 导入历史记录 | `/logs/smartdoc-import` |
 | 远程调用历史记录 | `/logs/remote-call` |
 
-## 适用场景
+## 目录结构
 
-- 产品原型评审
-- 客户演示
-- 服务治理后台方案预演
-- UI / UX 验证
-- 后端接口定义前的前端先行开发
+```text
+src/
+├── api                 # 后端接口封装
+├── components          # 通用组件
+├── layout              # 主布局和菜单
+├── mock                # 历史 Mock 数据和部分测试辅助数据
+├── router              # 路由和登录态守卫
+├── store               # Pinia 状态
+├── styles              # 全局样式
+├── types               # 业务类型
+├── utils               # 请求、存储等工具
+└── views               # 页面
+```
 
+## 请求规范
+
+后台管理接口统一返回：
+
+```ts
+{
+  code: number;
+  message: string;
+  data: T;
+}
+```
+
+前端 `src/utils/request.ts` 会：
+
+- 默认设置 `Content-Type: application/json`
+- 自动携带 `sessionToken`
+- 对 `40102`、`40103` 清理登录态并跳转登录页
+- 对 `FormData` 请求保留浏览器自动生成的 multipart 请求头
+
+## 常见问题
+
+- 登录失败或登录后无法进入系统：确认后端 `8081` 已启动，Oracle 可连接，且 `USER_INFO` 中存在可用用户。
+- 刷新页面后回到登录页：确认 `/api/auth/session/check` 返回成功。
+- 页面无数据：确认后端数据库已执行初始化和测试数据脚本，并检查浏览器 Network 中对应 `/api/**` 请求。
+- 本地跨域问题：开发模式优先使用 Vite 代理；如果设置了 `VITE_API_BASE_URL`，确认后端 CORS 允许当前前端地址。
+- 导出失败：确认请求头中有 `sessionToken`，且后端接口返回的是文件流。
