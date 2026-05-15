@@ -153,8 +153,7 @@ sessionToken: xxxxxxxxxx
 | 首页概览 | `/dashboard` |
 | API 授权拓扑图 | `/dashboard/topology` |
 | API 列表 | `/api/list` |
-| SmartDoc 导入 | `/api/smartdoc` |
-| 历史版本管理 | `/api/version-history` |
+| SmartDoc 导入 | `/smartdoc/import` |
 | APP 列表 | `/app/list` |
 | 单应用授权 | `/auth/app` |
 | API 反向授权 | `/auth/api-reverse` |
