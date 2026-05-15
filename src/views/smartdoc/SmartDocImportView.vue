@@ -85,7 +85,7 @@
         <div class="actions-tip">
           已完成差异分析，可直接确认导入当前解析结果
         </div>
-        <div class="actions-tip">废弃 API 的现有授权会在导入时自动撤销，如后续恢复该 API，需重新配置授权。</div>
+        <div class="actions-tip">废弃 API 会保留现有授权关系，可在“单个应用授权”的兼容旧版本中继续查看和编排。</div>
         <div class="actions-buttons">
           <el-button @click="cancelImport">取消</el-button>
           <el-button type="primary" @click="confirmImport">确认导入</el-button>
@@ -102,8 +102,8 @@
           <el-tag type="warning">废弃 {{ importResult.deprecation_count }} 个</el-tag>
         </div>
         <p class="result-tip">本次导入已生成新版本。对于新增 API，可在当前页面直接继续完成授权配置。</p>
-        <el-tag type="danger">撤销授权 {{ importResult.revoked_auth_count || 0 }} 条</el-tag>
-        <p class="result-tip">废弃 API 关联的现有授权已在导入时撤销，如后续恢复该 API，需重新配置授权。</p>
+        <el-tag type="info">保留授权 {{ importResult.revoked_auth_count === 0 ? '是' : '否' }}</el-tag>
+        <p class="result-tip">废弃 API 的现有授权关系会继续保留，可在“单个应用授权”的兼容旧版本中继续查看和调整。</p>
       </div>
       <template #footer>
         <el-button @click="resultVisible = false">关闭</el-button>

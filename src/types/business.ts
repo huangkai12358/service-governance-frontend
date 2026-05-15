@@ -161,6 +161,15 @@ export interface SingleAppAuthorization {
   callee_app_code: string;
   callee_app_name: string;
   api_paths: string[];
+  api_rows?: Array<{
+    api_name: string;
+    api_path: string;
+    version: string;
+    deprecated_auth?: boolean;
+  }>;
+  current_api_count?: number;
+  legacy_api_count?: number;
+  current_version?: string;
 }
 
 export interface AuthorizationAppOption {
