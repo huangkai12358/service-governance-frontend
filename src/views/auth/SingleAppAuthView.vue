@@ -32,12 +32,12 @@
           </el-table-column>
           <el-table-column label="授权 API 数（当前）" align="center">
             <template #default="{ row }">
-              {{ splitAuthorizedApiRows(row).current.length }}
+              {{ row.current_api_count ?? splitAuthorizedApiRows(row).current.length }}
             </template>
           </el-table-column>
           <el-table-column label="授权 API 数（废弃）" align="center">
             <template #default="{ row }">
-              {{ splitAuthorizedApiRows(row).legacy.length }}
+              {{ row.legacy_api_count ?? splitAuthorizedApiRows(row).legacy.length }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="140" align="center" header-align="center">
@@ -176,13 +176,13 @@
       </template>
     </el-dialog>
 
-    <el-drawer v-model="apiDetailVisible" title="已授权 API 详情" size="720px">
+    <el-drawer v-model="apiDetailVisible" title="授权 API 详情" size="720px">
       <div class="api-detail-panel">
         <el-descriptions v-if="currentApiDetail" :column="1" border>
           <el-descriptions-item label="调用方应用">{{ currentApiDetail.caller_app_name }}（{{ currentApiDetail.caller_app_code }}）</el-descriptions-item>
           <el-descriptions-item label="被调用方应用">{{ currentApiDetail.callee_app_name }}（{{ currentApiDetail.callee_app_code }}）</el-descriptions-item>
           <el-descriptions-item label="被调用方应用当前版本号">{{ currentDetailVersion }}</el-descriptions-item>
-          <el-descriptions-item label="已授权 API 数量">{{ currentApiDetail.api_paths.length }} 个</el-descriptions-item>
+          <el-descriptions-item label="授权 API 数量（含废弃）">{{ currentApiDetail.api_paths.length }} 个</el-descriptions-item>
         </el-descriptions>
 
         <el-input v-model="apiDetailKeyword" clearable placeholder="搜索请求路径" />
@@ -195,7 +195,7 @@
               <el-table-column prop="api_path" label="请求路径" min-width="320" show-overflow-tooltip />
             </el-table>
           </el-tab-pane>
-          <el-tab-pane :label="`兼容旧版本（${filteredLegacyApiDetailRows.length}）`" name="legacy">
+          <el-tab-pane :label="`废弃 API（${filteredLegacyApiDetailRows.length}）`" name="legacy">
             <el-table :data="pagedLegacyApiDetailRows" border>
               <el-table-column type="index" label="#" width="60" />
               <el-table-column prop="api_name" label="API 名称" min-width="180" />
@@ -538,24 +538,27 @@ onMounted(loadData);
 
 function splitAuthorizedApiRows(record: SingleAppAuthorization | null) {
   if (!record) {
-    return { current: [] as Array<{ api_name: string; api_path: string; version: string }>, legacy: [] as Array<{ api_name: string; api_path: string; version: string }> };
+    return {
+      current: [] as Array<{ api_name: string; api_path: string; version: string; deprecated_auth?: boolean }>,
+      legacy: [] as Array<{ api_name: string; api_path: string; version: string; deprecated_auth?: boolean }>
+    };
   }
-  const rows = ((record as any).api_rows || []) as Array<{ api_name: string; api_path: string; version: string }>;
-  const currentVersion = (record as any).current_version || '-';
+  const rows = (record.api_rows || []) as Array<{ api_name: string; api_path: string; version: string; deprecated_auth?: boolean }>;
   const toRow = (apiPath: string) => rows.find((item) => item.api_path === apiPath) || {
-    api_name: '兼容旧版本 API',
+    api_name: '废弃 API',
     api_path: apiPath,
-    version: '-'
+    version: '-',
+    deprecated_auth: true
   };
   return {
-    current: record.api_paths.map(toRow).filter((item) => item.version === currentVersion || currentVersion === '-'),
-    legacy: record.api_paths.map(toRow).filter((item) => item.version !== currentVersion && currentVersion !== '-')
+    current: record.api_paths.map(toRow).filter((item) => !item.deprecated_auth),
+    legacy: record.api_paths.map(toRow).filter((item) => Boolean(item.deprecated_auth))
   };
 }
 
 function getCurrentVersion(record: SingleAppAuthorization | null) {
   if (!record) return '-';
-  return (record as any).current_version || '-';
+  return record.current_version || '-';
 }
 </script>
 
